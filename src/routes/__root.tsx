@@ -77,14 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "KeyP — 실시간 관심사 알림" },
+      { name: "description", content: "AI 에이전트 팀이 모든 SNS를 대신 탐색·검증·요약해 실시간으로 알려주는 관심사 알림 서비스." },
+      { name: "author", content: "KeyP" },
+      { property: "og:title", content: "KeyP — 실시간 관심사 알림" },
+      { property: "og:description", content: "관심사 한 문장이면 끝. AI가 유튜브·인스타·링크드인까지 실시간으로 훑어 알림을 보냅니다." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
