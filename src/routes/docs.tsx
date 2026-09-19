@@ -132,6 +132,100 @@ function DocsPage() {
             실제 실시간 스크래핑이 필요하면 Firecrawl 커넥터를 붙여 <code>collectVerifyDeliver</code> 함수 안의 수집 단계를 교체하세요.
           </p>
         </Section>
+
+        <Section title="🚀 KeyP × Daytona — Opportunity Agent">
+          <p className="mb-3 text-sm text-slate-700">
+            <b>KeyP doesn&apos;t just find opportunities. It executes the work required to pursue them.</b>
+            <br />
+            <span className="text-slate-500">From Interest to Action.</span>
+          </p>
+          <p className="mb-3 text-sm text-slate-700">
+            KeyP Planner가 찾은 기회를 실제 <b>Daytona 샌드박스</b> 안에서 실행해 적격성 검증과 지원 서류 패키지를
+            자동 생성합니다.
+          </p>
+          <Code>{`KeyP Planner / Verifier
+        │  (기회 후보 + 신뢰도)
+        ▼
+Daytona Sandbox  (isolated, 서버에서만 생성)
+        │  opportunity.json + company-profile.json + agent.py
+        ▼
+Requirements 추출 → Company Profile 비교 → Eligibility 판정
+        ▼
+Generated Application Package
+  /output/eligibility-report.md
+  /output/application-draft.md
+  /output/submission-checklist.csv`}</Code>
+
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">엔드포인트</h3>
+          <table className="w-full overflow-hidden rounded-lg border border-slate-200 text-sm">
+            <tbody className="bg-white">
+              <tr className="border-t border-slate-100">
+                <td className="px-4 py-2 font-mono text-blue-600">GET</td>
+                <td className="px-4 py-2 font-mono">/api/daytona/status</td>
+                <td className="px-4 py-2 text-slate-600">{`{ configured: boolean }`}</td>
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="px-4 py-2 font-mono text-emerald-600">POST</td>
+                <td className="px-4 py-2 font-mono">/api/daytona/run-opportunity</td>
+                <td className="px-4 py-2 text-slate-600">샌드박스 실행 → 지원 패키지</td>
+              </tr>
+            </tbody>
+          </table>
+          <Code>{`// 요청
+{
+  "opportunity": { "id": "...", "title": "...", "category": "...", "deadline": "...",
+                   "organizer": "...", "location": "...", "matchScore": 92,
+                   "why": "...", "url": "https://..." },
+  "companyProfile": { "company": "XrisP", "location": "Seoul",
+                      "industry": "AI / Content / Education",
+                      "companyType": "Startup / SME", "interests": ["AI grants"] },
+  "demoMode": false
+}
+
+// 응답 (성공)
+{ "ok": true, "mode": "real", "sandboxId": "…", "matchScore": 92,
+  "eligible": "yes|review|no", "missingDocuments": [...],
+  "steps": [...], "log": [...], "files": [{ "name": "...", "content": "..." }],
+  "startedAt": "...", "finishedAt": "...", "elapsedMs": 12345 }
+
+// 응답 (시크릿 미설정 — 절대 성공으로 위장하지 않음, HTTP 503)
+{ "ok": false, "code": "not_configured", "error": "DAYTONA_API_KEY is not configured..." }`}</Code>
+
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">필수 시크릿</h3>
+          <p className="text-sm text-slate-700">
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">DAYTONA_API_KEY</code> — Project
+            Settings → Secrets 에 추가. 서버에서만 읽으며 브라우저에 절대 노출되지 않습니다. (선택:{" "}
+            <code className="font-mono text-xs">DAYTONA_API_URL</code>,{" "}
+            <code className="font-mono text-xs">DAYTONA_TARGET</code>,{" "}
+            <code className="font-mono text-xs">DAYTONA_ORGANIZATION_ID</code>)
+          </p>
+
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">REAL vs DEMO</h3>
+          <ul className="ml-5 list-disc space-y-1.5 text-sm text-slate-700">
+            <li>
+              <b>REAL RUN</b> — 시크릿이 설정된 경우에만. 실제 Daytona 샌드박스를 생성하고 그 안에서{" "}
+              <code className="font-mono text-xs">python3 agent.py</code>를 실행한 뒤 샌드박스를 정리합니다. 응답에 실제
+              sandbox id가 포함됩니다.
+            </li>
+            <li>
+              <b>DEMO RUN</b> — <code className="font-mono text-xs">demoMode: true</code>로 명시적으로 요청할 때만
+              동작하는 발표 백업용 시뮬레이션입니다. 샌드박스를 만들지 않고, UI·응답 모두 항상 DEMO로 표시됩니다.
+            </li>
+            <li>시크릿이 없으면 REAL 호출은 절대 가짜 성공을 반환하지 않고 <code className="font-mono text-xs">not_configured</code>를 반환합니다.</li>
+          </ul>
+
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">3분 데모 경로</h3>
+          <p className="text-sm text-slate-700">
+            Dashboard → Opportunities (샘플 1번 선택) → Run Opportunity Agent → Agent Runs 타임라인 → Results.
+            대시보드 하단의 <b>데모 데이터 초기화</b> 버튼으로 샘플 3건과 실행 기록을 초기 상태로 되돌릴 수 있습니다.
+          </p>
+          <p className="mt-3 rounded-lg bg-slate-100 p-3 text-xs text-slate-600">
+            참고: 공식 <code className="font-mono">@daytonaio/sdk</code>는 Node 전용 의존성(opentelemetry sdk-node, tar,
+            fast-glob, ws)으로 이 프로젝트의 엣지 서버 런타임에 번들되지 않습니다. 따라서 동일한 Daytona 클라우드 API를
+            <code className="font-mono"> fetch</code>로 직접 호출하는 얇은 서버 클라이언트(
+            <code className="font-mono">src/lib/daytona/client.server.ts</code>)를 사용합니다.
+          </p>
+        </Section>
       </div>
     </div>
   );
