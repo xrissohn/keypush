@@ -713,16 +713,19 @@ function Meta({ label, value }: { label: string; value: string }) {
 function AgentRunsTab({
   opportunity,
   configured,
+  research,
   onComplete,
   onGoOpportunities,
   onGoResults,
 }: {
   opportunity: Opportunity | null;
   configured: boolean;
+  research: { query: string; enginesUsed: ResearchEngine[] } | null;
   onComplete: (r: RunResultOk) => void;
   onGoOpportunities: () => void;
   onGoResults: () => void;
 }) {
+
   const [steps, setSteps] = useState<RunStep[]>([]);
   const [result, setResult] = useState<RunResultOk | null>(null);
   const [error, setError] = useState<{ code: string; message: string; log?: string[] } | null>(null);
@@ -753,7 +756,9 @@ function AgentRunsTab({
           opportunity,
           companyProfile: SAMPLE_COMPANY_PROFILE,
           demoMode: demoMode || undefined,
+          research: opportunity.sample ? undefined : (research ?? undefined),
         }),
+
       });
       return (await res.json()) as RunResult;
     },
