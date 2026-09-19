@@ -333,6 +333,7 @@ export interface RoutedSources {
     sourceType: "official" | "web" | "x" | "community";
     discoveredBy: SearchEngine[];
     evidence: ContextEvidence[];
+    postedAt?: string;
   }>;
   enginesUsed: SearchEngine[];
   engineErrors: Array<{ engine: SearchEngine; message: string }>;
@@ -411,6 +412,7 @@ export async function routeSources(plan: ContextPlan, maxResults = 8): Promise<R
       sourceType: sourceTypeOf(c.url),
       discoveredBy: [c.engine],
       evidence: [],
+      postedAt: c.postedAt,
     });
   }
 

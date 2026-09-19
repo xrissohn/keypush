@@ -64,6 +64,11 @@ export interface ContextFinding extends MatchJudgement {
   evidence: ContextEvidence[];
   firstSeenAt?: string;
   lastSeenAt?: string;
+  publishedAt?: string | null;
+  canonicalUrl?: string;
+  contentHash?: string;
+  semanticFingerprint?: string;
+  isBaseline?: boolean;
   isNew?: boolean;
 }
 
@@ -79,6 +84,26 @@ export interface ContextWatch {
   lastRunAt: string | null;
   lastStatus: string | null;
   createdAt: string;
+  baselineAt: string;
+  baselineCompletedAt: string | null;
+}
+
+export interface WatchNotification {
+  id: string;
+  watchId: string;
+  findingId: string;
+  status: "queued" | "sent" | "read";
+  title: string;
+  url: string;
+  matchScore: number;
+  createdAt: string;
+}
+
+export interface CreateWatchResult {
+  ok: true;
+  watch: ContextWatch;
+  baselineFinding: ContextFinding | null;
+  baselineKind: "strong" | "closest" | "none";
 }
 
 export interface WatchRunResult {
@@ -98,6 +123,11 @@ export interface WatchRunResult {
   logs: string[];
   elapsedMs: number;
 }
+
+export type PublicWatchRunResult = Pick<
+  WatchRunResult,
+  "ok" | "watchId" | "runId" | "findings" | "nearMisses" | "belowThreshold" | "elapsedMs"
+>;
 
 export interface WatchErrorResult {
   ok: false;

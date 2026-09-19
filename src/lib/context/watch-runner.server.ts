@@ -6,6 +6,7 @@
 
 import { buildContextPlan, judgeCandidates } from "./reasoner.server";
 import { routeSources } from "./source-router.server";
+import { createHash } from "node:crypto";
 import type {
   ContextFinding,
   ContextPlan,
@@ -13,6 +14,7 @@ import type {
   SearchEngine,
   WatchErrorResult,
   WatchRunResult,
+  WatchNotification,
 } from "./types";
 
 async function db() {
@@ -33,7 +35,43 @@ function rowToWatch(r: Record<string, any>): ContextWatch {
     lastRunAt: r["last_run_at"],
     lastStatus: r["last_status"],
     createdAt: r["created_at"],
+    baselineAt: r["baseline_at"] ?? r["created_at"],
+    baselineCompletedAt: r["baseline_completed_at"],
   };
+}
+
+function canonicalizeUrl(value: string) {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|fbclid|gclid|ref$|source$)/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+    url.pathname = url.pathname.replace(/\/$/, "") || "/";
+    return url.toString();
+  } catch {
+    return value.trim();
+  }
+}
+
+function normalizeContent(value: string) {
+  return value.toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function digest(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function sourceIdOf(value: string) {
+  try {
+    const url = new URL(value);
+    const xId = url.pathname.match(/\/status\/(\d+)/)?.[1];
+    const videoId = url.hostname.includes("youtu") ? url.searchParams.get("v") ?? url.pathname.split("/").filter(Boolean).at(-1) : null;
+    return xId ?? videoId ?? url.pathname.replace(/\/$/, "");
+  } catch {
+    return value;
+  }
 }
 
 export async function listWatches(): Promise<ContextWatch[]> {
@@ -53,7 +91,7 @@ export async function listFindings(watchId: string): Promise<ContextFinding[]> {
     .from("findings")
     .select("*")
     .eq("watch_id", watchId)
-    .order("match_score", { ascending: false })
+    .order("first_seen_at", { ascending: true })
     .limit(50);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r: Record<string, any>) => ({
@@ -74,12 +112,18 @@ export async function listFindings(watchId: string): Promise<ContextFinding[]> {
     evidence: r["evidence"] ?? [],
     firstSeenAt: r["first_seen_at"],
     lastSeenAt: r["last_seen_at"],
+    publishedAt: r["published_at"],
+    canonicalUrl: r["canonical_url"] ?? r["source_url"],
+    contentHash: r["content_hash"],
+    semanticFingerprint: r["semantic_fingerprint"],
+    isBaseline: Boolean(r["is_baseline"]),
   }));
 }
 
 /** Create a watch: natural language → OpenAI ContextPlan → DB row. */
 export async function createWatch(rawQuery: string): Promise<
-  { ok: true; watch: ContextWatch; planEngine: string; reasonerFallback: boolean; logs: string[] } | WatchErrorResult
+  | { ok: true; watch: ContextWatch; baselineFinding: ContextFinding | null; baselineKind: "strong" | "closest" | "none" }
+  | WatchErrorResult
 > {
   const planned = await buildContextPlan(rawQuery).catch((e) => e as Error);
   if (planned instanceof Error) {
@@ -99,23 +143,21 @@ export async function createWatch(rawQuery: string): Promise<
       plan_engine: planned.engine,
       refresh_minutes: planned.plan.refreshMinutes,
       next_run_at: new Date().toISOString(),
+      baseline_at: new Date().toISOString(),
     })
     .select("*")
     .single();
   if (error || !data) return { ok: false, code: "engine_error", error: error?.message ?? "insert failed" };
-  return {
-    ok: true,
-    watch: rowToWatch(data),
-    planEngine: planned.engine,
-    reasonerFallback: planned.fallback,
-    logs: planned.logs,
-  };
+  const initial = await runWatch(data["id"], "baseline");
+  if (!initial.ok) return initial;
+  const baselineFinding = initial.findings[0] ?? initial.nearMisses[0] ?? null;
+  return { ok: true, watch: { ...rowToWatch(data), baselineCompletedAt: new Date().toISOString() }, baselineFinding, baselineKind: initial.findings[0] ? "strong" : baselineFinding ? "closest" : "none" };
 }
 
 /** Run one watch now: sources → evidence → judge → persist findings + notifications. */
 export async function runWatch(
   watchId: string,
-  trigger: "manual" | "scheduler" = "manual",
+  trigger: "baseline" | "manual" | "scheduler" = "manual",
 ): Promise<WatchRunResult | WatchErrorResult> {
   const sb = await db();
   const t0 = Date.now();
@@ -164,8 +206,14 @@ export async function runWatch(
     for (const c of routed.candidates) {
       const j = judged.judgements[c.key];
       if (!j) continue;
+      const canonicalUrl = canonicalizeUrl(c.url);
+      const content = normalizeContent(`${c.title} ${j.summary} ${c.evidence.map((e) => e.snippet).join(" ")}`);
+      const contentHash = digest(content);
+      const semanticFingerprint = digest(normalizeContent(`${c.title} ${j.summary}`));
+      const dedupeKey = digest(`${canonicalUrl}|${sourceIdOf(canonicalUrl)}|${contentHash}`);
+      const publishedAt = c.postedAt && !Number.isNaN(Date.parse(c.postedAt)) ? new Date(c.postedAt).toISOString() : null;
       const item: ContextFinding = {
-        dedupeKey: c.key,
+        dedupeKey,
         title: c.title,
         summary: j.summary,
         whyMatched: j.whyMatched,
@@ -179,6 +227,11 @@ export async function runWatch(
         missingConstraints: j.missingConstraints,
         contradiction: j.contradiction,
         confidence: j.confidence,
+        publishedAt,
+        canonicalUrl,
+        contentHash,
+        semanticFingerprint,
+        isBaseline: trigger === "baseline",
       };
       if (j.matchScore < threshold) {
         belowThreshold += 1;
@@ -189,7 +242,8 @@ export async function runWatch(
     }
     findings.sort((a, b) => b.matchScore - a.matchScore);
     nearMisses.sort((a, b) => b.matchScore - a.matchScore);
-    nearMisses.splice(5);
+    nearMisses.splice(trigger === "baseline" ? 1 : 5);
+    if (trigger === "baseline") findings.splice(1);
     logs.push(
       `[judge] ${findings.length} above threshold ${threshold}, ${belowThreshold} filtered out (not notified)`,
     );
@@ -198,10 +252,15 @@ export async function runWatch(
     for (const f of findings) {
       const { data: existing } = await sb
         .from("findings")
-        .select("id")
+        .select("id, content_hash, semantic_fingerprint")
         .eq("watch_id", watchId)
-        .eq("dedupe_key", f.dedupeKey)
+        .or(`dedupe_key.eq.${f.dedupeKey},content_hash.eq.${f.contentHash},semantic_fingerprint.eq.${f.semanticFingerprint}`)
+        .limit(1)
         .maybeSingle();
+      const isAfterBaseline = f.publishedAt
+        ? new Date(f.publishedAt).getTime() >= new Date(watch.baselineAt).getTime()
+        : !existing && Date.now() > new Date(watch.baselineAt).getTime();
+      if (trigger !== "baseline" && !isAfterBaseline) continue;
       const payload = {
         watch_id: watchId,
         run_id: runId ?? null,
@@ -219,6 +278,11 @@ export async function runWatch(
         missing_constraints: f.missingConstraints,
         contradictions: f.contradiction,
         evidence: JSON.parse(JSON.stringify(f.evidence)),
+        is_baseline: trigger === "baseline",
+        published_at: f.publishedAt ?? null,
+        canonical_url: f.canonicalUrl,
+        content_hash: f.contentHash,
+        semantic_fingerprint: f.semanticFingerprint,
         last_seen_at: new Date().toISOString(),
       };
       if (existing?.["id"]) {
@@ -232,7 +296,7 @@ export async function runWatch(
         if (f.id) {
           await sb.from("source_evidence").insert(
             f.evidence.map((e) => ({
-              finding_id: f.id!,
+              finding_id: f.id,
               engine: e.engine,
               url: e.url,
               title: e.title,
@@ -242,7 +306,7 @@ export async function runWatch(
               is_x: e.isX,
             })),
           );
-          await sb
+          if (trigger !== "baseline") await sb
             .from("notification_queue")
             .insert({
               watch_id: watchId,
@@ -273,6 +337,7 @@ export async function runWatch(
         last_run_at: new Date().toISOString(),
         last_status: "success",
         next_run_at: new Date(Date.now() + Math.max(plan.refreshMinutes, 15) * 60_000).toISOString(),
+        ...(trigger === "baseline" ? { baseline_completed_at: new Date().toISOString() } : {}),
       })
       .eq("id", watchId);
 
@@ -303,6 +368,52 @@ export async function runWatch(
     await sb.from("context_watches").update({ last_status: `error: ${message.slice(0, 120)}` }).eq("id", watchId);
     return { ok: false, code: "engine_error", error: message, logs };
   }
+}
+
+export async function updateWatch(watchId: string, input: { active?: boolean; refreshMinutes?: number }) {
+  const sb = await db();
+  const patch: Record<string, boolean | number | string> = {};
+  if (typeof input.active === "boolean") patch["active"] = input.active;
+  if (typeof input.refreshMinutes === "number") {
+    patch["refresh_minutes"] = Math.min(Math.max(Math.round(input.refreshMinutes), 15), 10080);
+    patch["next_run_at"] = new Date(Date.now() + Number(patch["refresh_minutes"]) * 60_000).toISOString();
+  }
+  const { data, error } = await sb.from("context_watches").update(patch).eq("id", watchId).select("*").single();
+  if (error || !data) throw new Error(error?.message ?? "watch update failed");
+  return rowToWatch(data);
+}
+
+export async function deleteWatch(watchId: string) {
+  const sb = await db();
+  const { error } = await sb.from("context_watches").delete().eq("id", watchId);
+  if (error) throw new Error(error.message);
+}
+
+export async function listNotifications(): Promise<WatchNotification[]> {
+  const sb = await db();
+  const { data, error } = await sb.from("notification_queue").select("*").order("created_at", { ascending: false }).limit(50);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => {
+    const payload = (row.payload ?? {}) as Record<string, unknown>;
+    return {
+      id: row.id,
+      watchId: row.watch_id,
+      findingId: row.finding_id,
+      status: row.status as WatchNotification["status"],
+      title: String(payload["title"] ?? "새 정보를 찾았어요"),
+      url: String(payload["url"] ?? ""),
+      matchScore: Number(payload["matchScore"] ?? 0),
+      createdAt: row.created_at,
+    };
+  });
+}
+
+export async function markNotificationsRead(ids?: string[]) {
+  const sb = await db();
+  let query = sb.from("notification_queue").update({ status: "read", read_at: new Date().toISOString() }).neq("status", "read");
+  if (ids?.length) query = query.in("id", ids);
+  const { error } = await query;
+  if (error) throw new Error(error.message);
 }
 
 /** Idempotent scheduler tick: claim_due_watches() locks rows so ticks can't overlap. */
