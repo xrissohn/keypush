@@ -206,6 +206,7 @@ def run_grok():
     return {"items": items, "chunks": uniq, "text": text[:4000]}
 
 gemini_out = {"items": [], "chunks": [], "queries": [], "text": ""}
+lovable_out = {"items": [], "chunks": [], "queries": [], "text": ""}
 grok_out = {"items": [], "chunks": [], "text": ""}
 
 if GEMINI_KEY:
@@ -216,8 +217,16 @@ if GEMINI_KEY:
         msg = str(e)[:300]
         engine_errors.append({"engine": "gemini", "message": msg})
         log("gemini: FAILED %s" % msg)
+elif LOVABLE_KEY:
+    try:
+        lovable_out = run_lovable()
+        engines_used.append("lovable")
+    except Exception as e:
+        msg = str(e)[:300]
+        engine_errors.append({"engine": "lovable", "message": msg})
+        log("lovable: FAILED %s" % msg)
 else:
-    log("gemini: GEMINI_API_KEY not configured — skipped (no live Google Search grounding)")
+    log("gemini: GEMINI_API_KEY not configured and no Lovable AI fallback — skipped (no live Google Search grounding)")
 
 if XAI_KEY:
     try:
