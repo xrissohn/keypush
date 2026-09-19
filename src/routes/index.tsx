@@ -975,6 +975,17 @@ function RunSummary({ run }: { run: RunResultOk }) {
           {(run.elapsedMs / 1000).toFixed(1)}s
         </span>
       </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+        <span className="rounded bg-violet-50 px-1.5 py-0.5 font-bold text-violet-700">
+          Research Engines: {run.enginesUsed?.length ? run.enginesUsed.join(" + ") : "none (evidence 없음)"}
+        </span>
+        <span>evidence {run.evidenceCount ?? 0}</span>
+        <span>X sources {run.xSourceCount ?? 0}</span>
+        {run.eligibilityEngine && (
+          <span className="font-mono">eligibility: {run.eligibilityEngine}</span>
+        )}
+      </div>
+
 
       {run.reasons.length > 0 && (
         <ul className="mt-3 space-y-1">
