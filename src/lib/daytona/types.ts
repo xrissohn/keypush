@@ -1,4 +1,5 @@
 // Shared, client-safe types for the KeyP × Daytona Opportunity Agent.
+import type { ResearchEngine, SourceEvidence } from "@/lib/research/types";
 
 export interface Opportunity {
   id: string;
@@ -12,7 +13,16 @@ export interface Opportunity {
   url: string;
   /** true when this is preloaded demo/sample data, not a live verified listing */
   sample?: boolean;
+  /* ── live-research provenance (absent on sample data) ── */
+  discoveredBy?: ResearchEngine[];
+  sourceType?: "official" | "web" | "x";
+  sourceEvidence?: SourceEvidence[];
+  xEvidence?: SourceEvidence[];
+  verified?: boolean;
+  confidence?: number;
+  summary?: string;
 }
+
 
 export interface CompanyProfile {
   company: string;
