@@ -16,7 +16,9 @@ import {
   Loader2,
   Play,
   RotateCcw,
+  Radar,
   Search,
+
   ShieldCheck,
   Sparkles,
   Target,
@@ -46,6 +48,7 @@ import {
   saveOpportunities,
   saveRun,
 } from "@/lib/daytona/storage";
+import { ContextWatchTab } from "@/components/keyp/ContextWatchTab";
 
 
 export const Route = createFileRoute("/")({
@@ -69,11 +72,12 @@ export const Route = createFileRoute("/")({
   component: KeypDaytonaApp,
 });
 
-type Tab = "dashboard" | "opportunities" | "runs" | "results";
+type Tab = "watches" | "dashboard" | "opportunities" | "runs" | "results";
 
 function KeypDaytonaApp() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>("watches");
   const [hydrated, setHydrated] = useState(false);
+
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [runs, setRuns] = useState<RunResultOk[]>([]);
   const [selected, setSelected] = useState<Opportunity | null>(null);
@@ -120,7 +124,10 @@ function KeypDaytonaApp() {
       <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col bg-white shadow-2xl md:max-w-[820px]">
         <TopBar tab={tab} configured={configured} />
         <main className="flex-1 overflow-y-auto pb-28">
-          {!hydrated ? null : tab === "dashboard" ? (
+          {!hydrated ? null : tab === "watches" ? (
+            <ContextWatchTab engines={st} />
+          ) : tab === "dashboard" ? (
+
             <DashboardTab
               opportunities={opportunities}
               runs={runs}
@@ -171,11 +178,13 @@ function KeypDaytonaApp() {
 /* ─────────── Chrome ─────────── */
 
 const TAB_TITLES: Record<Tab, { ko: string; en: string }> = {
+  watches: { ko: "관심 감시", en: "Context Watch" },
   dashboard: { ko: "대시보드", en: "Dashboard" },
   opportunities: { ko: "기회 탐색", en: "Opportunities" },
   runs: { ko: "에이전트 실행", en: "Agent Runs" },
   results: { ko: "결과", en: "Results" },
 };
+
 
 function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
   return (
@@ -213,6 +222,7 @@ function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
 
 function BottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const items: Array<{ id: Tab; icon: React.ReactNode }> = [
+    { id: "watches", icon: <Radar className="h-5 w-5" /> },
     { id: "dashboard", icon: <Layers className="h-5 w-5" /> },
     { id: "opportunities", icon: <Target className="h-5 w-5" /> },
     { id: "runs", icon: <Terminal className="h-5 w-5" /> },
@@ -220,7 +230,8 @@ function BottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   ];
   return (
     <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-[520px] -translate-x-1/2 border-t border-slate-100 bg-white/95 backdrop-blur md:max-w-[720px]">
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
+
         {items.map((it) => {
           const active = tab === it.id;
           return (

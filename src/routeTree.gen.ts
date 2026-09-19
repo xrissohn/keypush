@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiWatchesRouteImport } from './routes/api/watches'
+import { Route as ApiSchedulerTickRouteImport } from './routes/api/scheduler/tick'
 import { Route as ApiResearchStatusRouteImport } from './routes/api/research/status'
 import { Route as ApiResearchOpportunitiesRouteImport } from './routes/api/research/opportunities'
 import { Route as ApiDaytonaStatusRouteImport } from './routes/api/daytona/status'
 import { Route as ApiDaytonaRunOpportunityRouteImport } from './routes/api/daytona/run-opportunity'
+import { Route as ApiWatchesIdRunRouteImport } from './routes/api/watches.$id.run'
 import { Route as ApiPublicKeypSearchRouteImport } from './routes/api/public/keyp/search'
 
 const DocsRoute = DocsRouteImport.update({
@@ -25,6 +28,16 @@ const DocsRoute = DocsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWatchesRoute = ApiWatchesRouteImport.update({
+  id: '/api/watches',
+  path: '/api/watches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSchedulerTickRoute = ApiSchedulerTickRouteImport.update({
+  id: '/api/scheduler/tick',
+  path: '/api/scheduler/tick',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiResearchStatusRoute = ApiResearchStatusRouteImport.update({
@@ -49,6 +62,11 @@ const ApiDaytonaRunOpportunityRoute =
     path: '/api/daytona/run-opportunity',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWatchesIdRunRoute = ApiWatchesIdRunRouteImport.update({
+  id: '/$id/run',
+  path: '/$id/run',
+  getParentRoute: () => ApiWatchesRoute,
+} as any)
 const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
   id: '/api/public/keyp/search',
   path: '/api/public/keyp/search',
@@ -58,68 +76,88 @@ const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
   '/api/research/status': typeof ApiResearchStatusRoute
+  '/api/scheduler/tick': typeof ApiSchedulerTickRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
+  '/api/watches/$id/run': typeof ApiWatchesIdRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
   '/api/research/status': typeof ApiResearchStatusRoute
+  '/api/scheduler/tick': typeof ApiSchedulerTickRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
+  '/api/watches/$id/run': typeof ApiWatchesIdRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
   '/api/research/status': typeof ApiResearchStatusRoute
+  '/api/scheduler/tick': typeof ApiSchedulerTickRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
+  '/api/watches/$id/run': typeof ApiWatchesIdRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/docs'
+    | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
     | '/api/research/opportunities'
     | '/api/research/status'
+    | '/api/scheduler/tick'
     | '/api/public/keyp/search'
+    | '/api/watches/$id/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/docs'
+    | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
     | '/api/research/opportunities'
     | '/api/research/status'
+    | '/api/scheduler/tick'
     | '/api/public/keyp/search'
+    | '/api/watches/$id/run'
   id:
     | '__root__'
     | '/'
     | '/docs'
+    | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
     | '/api/research/opportunities'
     | '/api/research/status'
+    | '/api/scheduler/tick'
     | '/api/public/keyp/search'
+    | '/api/watches/$id/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
+  ApiWatchesRoute: typeof ApiWatchesRouteWithChildren
   ApiDaytonaRunOpportunityRoute: typeof ApiDaytonaRunOpportunityRoute
   ApiDaytonaStatusRoute: typeof ApiDaytonaStatusRoute
   ApiResearchOpportunitiesRoute: typeof ApiResearchOpportunitiesRoute
   ApiResearchStatusRoute: typeof ApiResearchStatusRoute
+  ApiSchedulerTickRoute: typeof ApiSchedulerTickRoute
   ApiPublicKeypSearchRoute: typeof ApiPublicKeypSearchRoute
 }
 
@@ -137,6 +175,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/watches': {
+      id: '/api/watches'
+      path: '/api/watches'
+      fullPath: '/api/watches'
+      preLoaderRoute: typeof ApiWatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/scheduler/tick': {
+      id: '/api/scheduler/tick'
+      path: '/api/scheduler/tick'
+      fullPath: '/api/scheduler/tick'
+      preLoaderRoute: typeof ApiSchedulerTickRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/research/status': {
@@ -167,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDaytonaRunOpportunityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/watches/$id/run': {
+      id: '/api/watches/$id/run'
+      path: '/$id/run'
+      fullPath: '/api/watches/$id/run'
+      preLoaderRoute: typeof ApiWatchesIdRunRouteImport
+      parentRoute: typeof ApiWatchesRoute
+    }
     '/api/public/keyp/search': {
       id: '/api/public/keyp/search'
       path: '/api/public/keyp/search'
@@ -177,13 +236,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiWatchesRouteChildren {
+  ApiWatchesIdRunRoute: typeof ApiWatchesIdRunRoute
+}
+
+const ApiWatchesRouteChildren: ApiWatchesRouteChildren = {
+  ApiWatchesIdRunRoute: ApiWatchesIdRunRoute,
+}
+
+const ApiWatchesRouteWithChildren = ApiWatchesRoute._addFileChildren(
+  ApiWatchesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
+  ApiWatchesRoute: ApiWatchesRouteWithChildren,
   ApiDaytonaRunOpportunityRoute: ApiDaytonaRunOpportunityRoute,
   ApiDaytonaStatusRoute: ApiDaytonaStatusRoute,
   ApiResearchOpportunitiesRoute: ApiResearchOpportunitiesRoute,
   ApiResearchStatusRoute: ApiResearchStatusRoute,
+  ApiSchedulerTickRoute: ApiSchedulerTickRoute,
   ApiPublicKeypSearchRoute: ApiPublicKeypSearchRoute,
 }
 export const routeTree = rootRouteImport

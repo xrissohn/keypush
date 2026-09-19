@@ -64,10 +64,14 @@ export interface ResearchEngineStatus {
   daytonaConfigured: boolean;
   geminiConfigured: boolean;
   grokConfigured: boolean;
+  openaiConfigured: boolean;
   lovableAiAvailable: boolean;
   geminiModel: string;
   grokModel: string;
+  openaiModel: string;
+  openaiDeepModel: string;
 }
+
 
 export const RESEARCH_STEPS: Array<{ key: string; ko: string; en: string }> = [
   { key: "sandbox", ko: "Daytona 샌드박스 생성", en: "Daytona sandbox created" },
