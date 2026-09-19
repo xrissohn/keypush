@@ -101,7 +101,7 @@ export async function runResearchInSandbox(input: {
     push(
       `exec: python3 research_agent.py (engines: ${
         [
-          cfg.geminiKey ? "gemini" : lovableKey ? "lovable(fallback)" : "",
+          cfg.geminiKey ? "gemini" : cfg.lovableAiAvailable ? "lovable(fallback)" : "",
           cfg.grokKey && "grok",
         ]
           .filter(Boolean)
