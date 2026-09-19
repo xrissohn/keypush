@@ -369,10 +369,10 @@ function DashboardTab({
       </section>
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
-        <div className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
           <Layers className="h-3.5 w-3.5" />
           Architecture
-        </div>
+        </h2>
         <pre className="overflow-x-auto font-mono text-[10px] leading-relaxed text-emerald-300">{`KeyP Planner
   → Daytona Sandbox (isolated runtime)
     → Gemini Google Search + Grok X Search
