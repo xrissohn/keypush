@@ -64,8 +64,12 @@ async function req<T>(
   }
 }
 
+const DEFAULT_TOOLBOX_PROXY = "https://proxy.app.daytona.io/toolbox";
+
 function toolboxBaseOf(dto: SandboxDto): string {
-  const proxy = (dto.toolboxProxyUrl || "https://proxy.app.daytona.io/toolbox").replace(/\/$/, "");
+  const proxy = (dto.toolboxProxyUrl || DEFAULT_TOOLBOX_PROXY).replace(/\/$/, "");
+  // If the proxy URL already ends with the sandbox id, do not append it again.
+  if (proxy.endsWith(`/${dto.id}`)) return proxy;
   return `${proxy}/${dto.id}`;
 }
 
@@ -75,6 +79,7 @@ export async function createSandbox(opts: { snapshot?: string; labels?: Record<s
   if (!apiKey) throw new DaytonaError("DAYTONA_API_KEY is not configured");
 
   const body: Record<string, unknown> = {
+    language: "python", // guarantee agent.py has its expected runtime
     labels: { app: "keyp", purpose: "opportunity-agent", ...(opts.labels ?? {}) },
     autoStopInterval: 15,
     autoDeleteInterval: 30,
