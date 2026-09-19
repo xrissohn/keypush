@@ -202,16 +202,13 @@ if GEMINI_KEY:
         msg = str(e)[:300]
         engine_errors.append({"engine": "gemini", "message": msg})
         log("gemini: FAILED %s" % msg)
-elif LOVABLE_KEY:
-    try:
-        lovable_out = run_lovable()
-        engines_used.append("lovable")
-    except Exception as e:
-        msg = str(e)[:300]
-        engine_errors.append({"engine": "lovable", "message": msg})
-        log("lovable: FAILED %s" % msg)
 else:
-    log("gemini: GEMINI_API_KEY not configured and no Lovable AI fallback — skipped (no live Google Search grounding)")
+    _lov = load_lovable()
+    if _lov is not None:
+        lovable_out = _lov
+        engines_used.append("lovable")
+    else:
+        log("gemini: GEMINI_API_KEY not configured and no Lovable AI fallback — skipped (no live Google Search grounding)")
 
 if XAI_KEY:
     try:
