@@ -250,18 +250,20 @@ function BottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 function DashboardTab({
   opportunities,
   runs,
-  configured,
+  engines,
   statusLoading,
   onFind,
   onResetDemo,
 }: {
   opportunities: Opportunity[];
   runs: RunResultOk[];
-  configured: boolean;
+  engines?: ResearchEngineStatus;
   statusLoading: boolean;
   onFind: () => void;
   onResetDemo: () => void;
 }) {
+  const configured = engines?.daytonaConfigured ?? false;
+
   const readyToApply = runs.filter((r) => r.eligible !== "no").length;
   const avgMatch =
     opportunities.length === 0
@@ -302,20 +304,68 @@ function DashboardTab({
         </div>
         <ul className="space-y-2">
           <SystemRow name="KeyP Planner" state="ok" note="온라인" />
-          <SystemRow name="Verifier" state="ok" note="온라인" />
           <SystemRow
             name="Daytona Sandbox"
             state={statusLoading ? "loading" : configured ? "ok" : "warn"}
             note={statusLoading ? "확인 중…" : configured ? "Connected" : "Not connected · 연결 필요"}
           />
+          <SystemRow
+            name="Gemini Web Search"
+            state={statusLoading ? "loading" : engines?.geminiConfigured ? "ok" : "warn"}
+            note={
+              statusLoading
+                ? "확인 중…"
+                : engines?.geminiConfigured
+                  ? `Google Search grounding · ${engines.geminiModel}`
+                  : "연결 필요 · GEMINI_API_KEY"
+            }
+          />
+          <SystemRow
+            name="Grok X Search"
+            state={statusLoading ? "loading" : engines?.grokConfigured ? "ok" : "warn"}
+            note={
+              statusLoading
+                ? "확인 중…"
+                : engines?.grokConfigured
+                  ? `x_search + web_search · ${engines.grokModel}`
+                  : "연결 필요 · XAI_API_KEY"
+            }
+          />
         </ul>
-        {!configured && !statusLoading && (
+        {!statusLoading && !configured && (
           <p className="mt-3 rounded-lg bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-800">
-            DAYTONA_API_KEY가 설정되지 않아 실제 샌드박스 실행은 비활성 상태입니다. 발표용으로는 DEMO 버튼으로
-            시뮬레이션 실행을 볼 수 있으며, 시뮬레이션은 항상 <b>DEMO RUN</b>으로 표시됩니다.
+            DAYTONA_API_KEY가 설정되지 않아 실제 샌드박스 실행과 라이브 리서치는 비활성 상태입니다. 발표용으로는 DEMO
+            버튼으로 시뮬레이션 실행을 볼 수 있으며, 시뮬레이션은 항상 <b>DEMO RUN</b>으로 표시됩니다.
+          </p>
+        )}
+        {!statusLoading && !engines?.geminiConfigured && (
+          <p className="mt-2 rounded-lg bg-slate-100 p-2.5 text-[11px] leading-relaxed text-slate-600">
+            GEMINI_API_KEY 미설정 — 직접 Google Search 그라운딩은 사용할 수 없습니다.
+            {engines?.lovableAiAvailable
+              ? " 질의 설계·요약용 추론 폴백(Lovable AI · Gemini)만 사용됩니다."
+              : ""}
+          </p>
+        )}
+        {!statusLoading && !engines?.grokConfigured && (
+          <p className="mt-2 rounded-lg bg-slate-100 p-2.5 text-[11px] leading-relaxed text-slate-600">
+            XAI_API_KEY 미설정 — X(트위터) 검색은 실행되지 않으며 가짜 X 결과를 만들지 않습니다. Cursor의 Grok
+            크레딧은 Cursor 안에서만 적용되며 이 앱의 xAI API 결제로 사용할 수 없습니다.
           </p>
         )}
       </section>
+
+      <section className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
+        <div className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+          <Layers className="h-3.5 w-3.5" />
+          Architecture
+        </div>
+        <pre className="overflow-x-auto font-mono text-[10px] leading-relaxed text-emerald-300">{`KeyP Planner
+  → Daytona Sandbox (isolated runtime)
+    → Gemini Google Search + Grok X Search
+    → Direct Source Verification (HTTP GET)
+    → Evidence Fusion
+  → Eligibility / Application Package`}</pre>
+
 
       <button
         onClick={onResetDemo}
