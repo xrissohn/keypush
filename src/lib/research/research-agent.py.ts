@@ -425,6 +425,7 @@ json.dump({"query": QUERY, "enginesUsed": engines_used, "results": results},
           open(os.path.join(BASE, "research-results.json"), "w", encoding="utf-8"),
           ensure_ascii=False, indent=2)
 json.dump({"gemini": {"queries": gemini_out.get("queries", []), "chunks": gemini_out.get("chunks", [])},
+           "lovable": {"chunks": lovable_out.get("chunks", [])},
            "grok": {"chunks": grok_out.get("chunks", [])}},
           open(os.path.join(BASE, "source-evidence.json"), "w", encoding="utf-8"),
           ensure_ascii=False, indent=2)
