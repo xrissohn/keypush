@@ -12,6 +12,7 @@ const corsHeaders = {
 };
 
 export const Route = createFileRoute("/api/public/keyp/search")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       OPTIONS: () => new Response(null, { status: 204, headers: corsHeaders }),

@@ -1,11 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/docs")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
-      { title: "KeyP API 문서 — 팀 공유용" },
-      { name: "description", content: "KeyP 실시간 관심사 알림 API 사용법." },
+      { title: "KeyP API 문서 — Context Watch & 검색 API" },
+      {
+        name: "description",
+        content:
+          "KeyP API 문서: 자연어 관심사 감시(Context Watch) 생성, 실시간 기회 탐색, 검색 엔드포인트와 응답 형식, 인증 및 폴백 규칙.",
+      },
+      { property: "og:title", content: "KeyP API 문서 — Context Watch & 검색 API" },
+      {
+        property: "og:description",
+        content:
+          "Context Watch 생성, 실행, 스케줄러, 기회 탐색 엔드포인트의 요청·응답 예시와 엔진 상태 규칙을 정리한 개발자 문서.",
+      },
+      { property: "og:type", content: "article" },
+      { property: "og:url", content: "https://keyp.info/docs" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://keyp.info/docs" }],
   }),
   component: DocsPage,
 });

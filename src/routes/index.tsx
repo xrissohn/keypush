@@ -52,6 +52,7 @@ import { ContextWatchTab } from "@/components/keyp/ContextWatchTab";
 
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "KeyP × Daytona — Opportunity Agent" },
@@ -198,7 +199,7 @@ function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
             KeyP × Daytona
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-base font-bold text-slate-900">{TAB_TITLES[tab].ko}</span>
+            <h1 className="text-base font-bold text-slate-900">{TAB_TITLES[tab].ko}</h1>
             <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
               {TAB_TITLES[tab].en}
             </span>
@@ -287,7 +288,7 @@ function DashboardTab({
         <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
           KeyP × Daytona
         </div>
-        <h1 className="mt-2 text-2xl font-bold leading-snug">From Interest to Action.</h1>
+        <h2 className="mt-2 text-2xl font-bold leading-snug">From Interest to Action.</h2>
         <p className="mt-2 text-sm leading-relaxed text-white/85">
           KeyP는 기회를 찾는 데서 멈추지 않습니다. 그 기회를 잡기 위해 필요한 일까지 직접 실행합니다.
         </p>
@@ -309,10 +310,10 @@ function DashboardTab({
       </div>
 
       <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <h2 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
           <ShieldCheck className="h-4 w-4" />
           System Status
-        </div>
+        </h2>
         <ul className="space-y-2">
           <SystemRow name="KeyP Planner" state="ok" note="온라인" />
           <SystemRow
@@ -368,10 +369,10 @@ function DashboardTab({
       </section>
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
-        <div className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
           <Layers className="h-3.5 w-3.5" />
           Architecture
-        </div>
+        </h2>
         <pre className="overflow-x-auto font-mono text-[10px] leading-relaxed text-emerald-300">{`KeyP Planner
   → Daytona Sandbox (isolated runtime)
     → Gemini Google Search + Grok X Search
@@ -1129,7 +1130,7 @@ function ResultDetailSheet({ run, onClose }: { run: RunResultOk; onClose: () => 
             <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Run detail</div>
             <h3 className="text-sm font-bold leading-snug text-slate-900">{run.opportunity.title}</h3>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <button onClick={onClose} aria-label="닫기" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
             <X className="h-4 w-4" />
           </button>
         </div>

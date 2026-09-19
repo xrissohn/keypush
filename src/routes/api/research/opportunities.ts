@@ -16,6 +16,7 @@ const bodySchema = z.object({
 });
 
 export const Route = createFileRoute("/api/research/opportunities")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

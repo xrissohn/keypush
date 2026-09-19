@@ -55,6 +55,7 @@ const bodySchema = z.object({
 
 
 export const Route = createFileRoute("/api/daytona/run-opportunity")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {
