@@ -311,13 +311,15 @@ function DashboardTab({
           />
           <SystemRow
             name="Gemini Web Search"
-            state={statusLoading ? "loading" : engines?.geminiConfigured ? "ok" : "warn"}
+            state={statusLoading ? "loading" : engines?.geminiConfigured || engines?.lovableAiAvailable ? "ok" : "warn"}
             note={
               statusLoading
                 ? "확인 중…"
                 : engines?.geminiConfigured
                   ? `Google Search grounding · ${engines.geminiModel}`
-                  : "연결 필요 · GEMINI_API_KEY"
+                  : engines?.lovableAiAvailable
+                    ? "Lovable AI 폴백 · 모델 지식 기반 (라이브 검색 아님)"
+                    : "연결 필요 · GEMINI_API_KEY"
             }
           />
           <SystemRow
@@ -501,7 +503,10 @@ function OpportunitiesTab({
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <EngineChip label="Daytona" on={engines?.daytonaConfigured} />
-        <EngineChip label="Gemini" on={engines?.geminiConfigured} />
+        <EngineChip
+          label={engines?.geminiConfigured ? "Gemini" : "Gemini → Lovable AI"}
+          on={engines?.geminiConfigured || engines?.lovableAiAvailable}
+        />
         <EngineChip label="Grok" on={engines?.grokConfigured} />
       </div>
 
@@ -538,8 +543,9 @@ function OpportunitiesTab({
           </div>
           <ol className="space-y-1.5">
             {RESEARCH_STEPS.map((s, i) => {
+              const lovableFallback = s.key === "gemini" && !engines?.geminiConfigured && engines?.lovableAiAvailable;
               const skipped =
-                (s.key === "gemini" && !engines?.geminiConfigured) ||
+                (s.key === "gemini" && !engines?.geminiConfigured && !engines?.lovableAiAvailable) ||
                 (s.key === "grok" && !engines?.grokConfigured);
               return (
                 <li key={s.key} className="flex items-center gap-2 text-[11px]">
@@ -552,6 +558,7 @@ function OpportunitiesTab({
                   </span>
                   <span className={skipped ? "text-slate-500" : "text-slate-200"}>{s.ko}</span>
                   <span className="font-mono text-[9px] text-slate-500">{s.en}</span>
+                  {lovableFallback && <span className="text-[9px] text-indigo-400">Lovable AI 폴백 · 모델 지식</span>}
                   {skipped && <span className="text-[9px] text-amber-500">skipped · 연결 필요</span>}
                 </li>
               );
@@ -639,6 +646,7 @@ function OpportunityCard({ o, onRun }: { o: Opportunity; onRun: () => void }) {
         <Badge tone="indigo">{o.category}</Badge>
         {o.sample && <Badge tone="slate">SAMPLE DATA</Badge>}
         {o.discoveredBy?.includes("gemini") && <Badge tone="violet">Gemini</Badge>}
+        {o.discoveredBy?.includes("lovable") && <Badge tone="indigo">Lovable AI</Badge>}
         {o.discoveredBy?.includes("grok") && <Badge tone="violet">Grok</Badge>}
         {xEv.length > 0 && <Badge tone="dark">X</Badge>}
         {o.sourceType === "official" && <Badge tone="emerald">Official</Badge>}

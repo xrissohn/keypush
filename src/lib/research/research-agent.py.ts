@@ -20,6 +20,8 @@ MAX_FETCH = int(cfg.get("maxFetch", 12))
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 XAI_KEY = os.environ.get("XAI_API_KEY", "")
+LOVABLE_KEY = os.environ.get("LOVABLE_API_KEY", "")
+LOVABLE_MODEL = cfg.get("lovableModel", "openai/gpt-6-astra")
 
 logs = []
 engines_used = []
@@ -106,6 +108,25 @@ def run_gemini():
     log("gemini: parsed %d candidate opportunities" % len(items))
     return {"items": items, "chunks": chunks, "queries": queries, "text": text[:4000]}
 
+# ─────────── A2) Lovable AI fallback (no live Google Search grounding) ───────────
+# The Lovable AI gateway is NOT reachable from inside the sandbox network, so the
+# server performs that call and drops the parsed candidates into
+# lovable-candidates.json before this script runs. This is model knowledge only —
+# no live web search — so candidates are labeled discoveredBy=["lovable"] and go
+# through the same direct-URL verification as everything else.
+def load_lovable():
+    path = os.path.join(BASE, "lovable-candidates.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        data = json.load(open(path, encoding="utf-8"))
+    except Exception as e:
+        log("lovable: failed to read candidates file (%s)" % str(e)[:120])
+        return None
+    items = data.get("items") or []
+    log("lovable: loaded %d server-side candidates (knowledge-only, no live search)" % len(items))
+    return {"items": items, "chunks": [], "queries": [], "text": ""}
+
 # ─────────── B) Grok web_search + x_search ───────────
 def run_grok():
     prompt = (
@@ -170,6 +191,7 @@ def run_grok():
     return {"items": items, "chunks": uniq, "text": text[:4000]}
 
 gemini_out = {"items": [], "chunks": [], "queries": [], "text": ""}
+lovable_out = {"items": [], "chunks": [], "queries": [], "text": ""}
 grok_out = {"items": [], "chunks": [], "text": ""}
 
 if GEMINI_KEY:
@@ -181,7 +203,12 @@ if GEMINI_KEY:
         engine_errors.append({"engine": "gemini", "message": msg})
         log("gemini: FAILED %s" % msg)
 else:
-    log("gemini: GEMINI_API_KEY not configured — skipped (no live Google Search grounding)")
+    _lov = load_lovable()
+    if _lov is not None:
+        lovable_out = _lov
+        engines_used.append("lovable")
+    else:
+        log("gemini: GEMINI_API_KEY not configured and no Lovable AI fallback — skipped (no live Google Search grounding)")
 
 if XAI_KEY:
     try:
@@ -315,6 +342,8 @@ def add_candidate(item, engine, extra_chunks):
 
 for it in gemini_out["items"][: MAX_RESULTS * 2]:
     add_candidate(it, "gemini", gemini_out["chunks"])
+for it in lovable_out["items"][: MAX_RESULTS * 2]:
+    add_candidate(it, "lovable", lovable_out["chunks"])
 for it in grok_out["items"][: MAX_RESULTS * 2]:
     add_candidate(it, "grok", grok_out["chunks"])
 
@@ -378,6 +407,7 @@ json.dump({"query": QUERY, "enginesUsed": engines_used, "results": results},
           open(os.path.join(BASE, "research-results.json"), "w", encoding="utf-8"),
           ensure_ascii=False, indent=2)
 json.dump({"gemini": {"queries": gemini_out.get("queries", []), "chunks": gemini_out.get("chunks", [])},
+           "lovable": {"chunks": lovable_out.get("chunks", [])},
            "grok": {"chunks": grok_out.get("chunks", [])}},
           open(os.path.join(BASE, "source-evidence.json"), "w", encoding="utf-8"),
           ensure_ascii=False, indent=2)
