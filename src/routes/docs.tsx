@@ -76,7 +76,7 @@ function DocsPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-3xl px-6 py-12">
         <div className="mb-8 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-lg font-black text-white">K</div>
+          <img src={keypLogo} alt="KeyP" className="h-10 w-10 rounded-lg" />
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest text-indigo-600">KeyP API</div>
             <h1 className="text-2xl font-bold text-slate-900">팀 공유용 API 문서</h1>
