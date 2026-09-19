@@ -11,6 +11,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/api/scheduler/tick")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

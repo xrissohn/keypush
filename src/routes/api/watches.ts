@@ -5,6 +5,7 @@ import { z } from "zod";
 const bodySchema = z.object({ query: z.string().min(4).max(800) });
 
 export const Route = createFileRoute("/api/watches")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async () => {

@@ -52,6 +52,7 @@ import { ContextWatchTab } from "@/components/keyp/ContextWatchTab";
 
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "KeyP × Daytona — Opportunity Agent" },

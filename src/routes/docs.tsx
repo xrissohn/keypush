@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/docs")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "KeyP API 문서 — 팀 공유용" },
