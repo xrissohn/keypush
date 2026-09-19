@@ -227,6 +227,46 @@ Generated Application Package
           </p>
         </Section>
 
+        <Section title="🛰️ Context Watch — 의도 기반 24/7 감시">
+          <p className="text-sm leading-relaxed text-slate-600">
+            KeyP의 "관심사"는 키워드가 아니라 <b>자연어 의도 + 맥락(시간·장소·조건·부정조건)</b>입니다. 입력 문장을
+            ContextPlan으로 구조화하고, 소스 전략에 따라 검색한 뒤, 근거를 직접 확인하고 조건 일치도를 판정합니다.
+          </p>
+          <Code>{`1. Intent & Context Reasoner (OpenAI Responses API, 기본 gpt-5.6-terra)
+   · ambiguityScore가 높으면 gpt-5.6-sol로 1회 escalation
+   · OPENAI_API_KEY 없으면 Lovable AI로 graceful fallback (UI에 fallback 표시)
+2. Source Router — ContextPlan.sourceStrategy 우선순위대로
+   · X/실시간 소셜 → Grok x_search + web_search
+   · 공개 웹/공식 문서 → Gemini Google Search (없으면 Lovable AI 지식 = live search 아님)
+   · 데이팅앱/로그인 뒤 개인정보/미성년자 → 접근하지 않음(차단 목록)
+3. Direct verification — 후보 URL 실제 HTTP GET, 우회 없음, 실패는 "확인 필요"
+4. Daytona — JS 렌더링·PDF·다중 링크가 필요할 때만 on-demand 생성 후 즉시 destroy
+5. Evidence-based Match Judge — matchScore / matchedConstraints /
+   missingConstraints / contradiction / whyMatched / confidence
+6. 알림 기준 미달 결과는 저장·알림하지 않고 "참고용"으로만 표시`}</Code>
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">엔드포인트 & 저장소</h3>
+          <Code>{`POST /api/watches           자연어 → ContextPlan → DB 저장
+GET  /api/watches           watch 목록 + findings
+POST /api/watches/:id/run   즉시 실행
+POST /api/scheduler/tick    next_run_at <= now() 인 watch를 제한 개수 처리
+GET  /api/research/status   엔진 configured boolean + 모델명 (키 값 반환 없음)
+
+DB: context_watches · watch_runs · findings · source_evidence · notification_queue
+24/7의 source of truth는 next_run_at. claim_due_watches()가 FOR UPDATE SKIP LOCKED로
+행을 선점하므로 tick이 겹쳐도 같은 watch가 중복 실행되지 않습니다.`}</Code>
+          <p className="mt-3 rounded-lg bg-slate-100 p-3 text-xs leading-relaxed text-slate-600">
+            공개 소스 전용(privacyMode: public_only). 비공개 프로필·로그인/CAPTCHA/robots 우회·미성년자·비공개
+            개인정보·사진이나 이름 기반 속성 추론은 하지 않습니다. 개인 관련 결과는 본인의 공개 자기진술과 공개 출처
+            URL이 있을 때만 표시합니다. 현재 앱 로그인 기능이 없어 DB 쓰기는 서버 라우트에서만 수행합니다 —
+            TODO(auth): 로그인 도입 시 owner_id 기반 RLS 정책 추가.
+          </p>
+          <p className="mt-2 rounded-lg bg-slate-100 p-3 text-xs leading-relaxed text-slate-600">
+            TODO(deploy): 배포 후 <code className="font-mono">/api/scheduler/tick</code>을 15분 주기 cron(pg_cron +
+            pg_net 또는 외부 스케줄러)으로 호출하면 24/7 감시가 완성됩니다. 프리뷰 URL은 하드코딩하지 않았습니다.
+          </p>
+        </Section>
+
+
         <Section title="🔎 Multi-Source Research Agent (Gemini + Grok + Daytona)">
           <Code>{`1. Lovable UI / KeyP orchestration
 2. Daytona isolated research runtime (모든 수집·검증이 샌드박스 안에서 실행)
