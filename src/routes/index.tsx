@@ -310,10 +310,10 @@ function DashboardTab({
       </div>
 
       <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <h2 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
           <ShieldCheck className="h-4 w-4" />
           System Status
-        </div>
+        </h2>
         <ul className="space-y-2">
           <SystemRow name="KeyP Planner" state="ok" note="온라인" />
           <SystemRow
