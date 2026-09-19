@@ -13,6 +13,8 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWatchesRouteImport } from './routes/api/watches'
+import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
+import { Route as ApiWatchesIdRouteImport } from './routes/api/watches.$id'
 import { Route as ApiSchedulerTickRouteImport } from './routes/api/scheduler/tick'
 import { Route as ApiResearchStatusRouteImport } from './routes/api/research/status'
 import { Route as ApiResearchOpportunitiesRouteImport } from './routes/api/research/opportunities'
@@ -40,6 +42,16 @@ const ApiWatchesRoute = ApiWatchesRouteImport.update({
   id: '/api/watches',
   path: '/api/watches',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNotificationsRoute = ApiNotificationsRouteImport.update({
+  id: '/api/notifications',
+  path: '/api/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWatchesIdRoute = ApiWatchesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiWatchesRoute,
 } as any)
 const ApiSchedulerTickRoute = ApiSchedulerTickRouteImport.update({
   id: '/api/scheduler/tick',
@@ -69,9 +81,9 @@ const ApiDaytonaRunOpportunityRoute =
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiWatchesIdRunRoute = ApiWatchesIdRunRouteImport.update({
-  id: '/$id/run',
-  path: '/$id/run',
-  getParentRoute: () => ApiWatchesRoute,
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => ApiWatchesIdRoute,
 } as any)
 const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
   id: '/api/public/keyp/search',
@@ -83,12 +95,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
   '/api/research/status': typeof ApiResearchStatusRoute
   '/api/scheduler/tick': typeof ApiSchedulerTickRoute
+  '/api/watches/$id': typeof ApiWatchesIdRouteWithChildren
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
   '/api/watches/$id/run': typeof ApiWatchesIdRunRoute
 }
@@ -96,12 +110,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
   '/api/research/status': typeof ApiResearchStatusRoute
   '/api/scheduler/tick': typeof ApiSchedulerTickRoute
+  '/api/watches/$id': typeof ApiWatchesIdRouteWithChildren
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
   '/api/watches/$id/run': typeof ApiWatchesIdRunRoute
 }
@@ -110,12 +126,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
   '/api/research/status': typeof ApiResearchStatusRoute
   '/api/scheduler/tick': typeof ApiSchedulerTickRoute
+  '/api/watches/$id': typeof ApiWatchesIdRouteWithChildren
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
   '/api/watches/$id/run': typeof ApiWatchesIdRunRoute
 }
@@ -125,12 +143,14 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/sitemap.xml'
+    | '/api/notifications'
     | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
     | '/api/research/opportunities'
     | '/api/research/status'
     | '/api/scheduler/tick'
+    | '/api/watches/$id'
     | '/api/public/keyp/search'
     | '/api/watches/$id/run'
   fileRoutesByTo: FileRoutesByTo
@@ -138,12 +158,14 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/sitemap.xml'
+    | '/api/notifications'
     | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
     | '/api/research/opportunities'
     | '/api/research/status'
     | '/api/scheduler/tick'
+    | '/api/watches/$id'
     | '/api/public/keyp/search'
     | '/api/watches/$id/run'
   id:
@@ -151,12 +173,14 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/sitemap.xml'
+    | '/api/notifications'
     | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
     | '/api/research/opportunities'
     | '/api/research/status'
     | '/api/scheduler/tick'
+    | '/api/watches/$id'
     | '/api/public/keyp/search'
     | '/api/watches/$id/run'
   fileRoutesById: FileRoutesById
@@ -165,6 +189,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiNotificationsRoute: typeof ApiNotificationsRoute
   ApiWatchesRoute: typeof ApiWatchesRouteWithChildren
   ApiDaytonaRunOpportunityRoute: typeof ApiDaytonaRunOpportunityRoute
   ApiDaytonaStatusRoute: typeof ApiDaytonaStatusRoute
@@ -204,6 +229,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWatchesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/notifications': {
+      id: '/api/notifications'
+      path: '/api/notifications'
+      fullPath: '/api/notifications'
+      preLoaderRoute: typeof ApiNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/watches/$id': {
+      id: '/api/watches/$id'
+      path: '/$id'
+      fullPath: '/api/watches/$id'
+      preLoaderRoute: typeof ApiWatchesIdRouteImport
+      parentRoute: typeof ApiWatchesRoute
+    }
     '/api/scheduler/tick': {
       id: '/api/scheduler/tick'
       path: '/api/scheduler/tick'
@@ -241,10 +280,10 @@ declare module '@tanstack/react-router' {
     }
     '/api/watches/$id/run': {
       id: '/api/watches/$id/run'
-      path: '/$id/run'
+      path: '/run'
       fullPath: '/api/watches/$id/run'
       preLoaderRoute: typeof ApiWatchesIdRunRouteImport
-      parentRoute: typeof ApiWatchesRoute
+      parentRoute: typeof ApiWatchesIdRoute
     }
     '/api/public/keyp/search': {
       id: '/api/public/keyp/search'
@@ -256,12 +295,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ApiWatchesRouteChildren {
+interface ApiWatchesIdRouteChildren {
   ApiWatchesIdRunRoute: typeof ApiWatchesIdRunRoute
 }
 
-const ApiWatchesRouteChildren: ApiWatchesRouteChildren = {
+const ApiWatchesIdRouteChildren: ApiWatchesIdRouteChildren = {
   ApiWatchesIdRunRoute: ApiWatchesIdRunRoute,
+}
+
+const ApiWatchesIdRouteWithChildren = ApiWatchesIdRoute._addFileChildren(
+  ApiWatchesIdRouteChildren,
+)
+
+interface ApiWatchesRouteChildren {
+  ApiWatchesIdRoute: typeof ApiWatchesIdRouteWithChildren
+}
+
+const ApiWatchesRouteChildren: ApiWatchesRouteChildren = {
+  ApiWatchesIdRoute: ApiWatchesIdRouteWithChildren,
 }
 
 const ApiWatchesRouteWithChildren = ApiWatchesRoute._addFileChildren(
@@ -272,6 +323,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiNotificationsRoute: ApiNotificationsRoute,
   ApiWatchesRoute: ApiWatchesRouteWithChildren,
   ApiDaytonaRunOpportunityRoute: ApiDaytonaRunOpportunityRoute,
   ApiDaytonaStatusRoute: ApiDaytonaStatusRoute,
