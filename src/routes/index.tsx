@@ -199,7 +199,7 @@ function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
             KeyP × Daytona
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-base font-bold text-slate-900">{TAB_TITLES[tab].ko}</span>
+            <h1 className="text-base font-bold text-slate-900">{TAB_TITLES[tab].ko}</h1>
             <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
               {TAB_TITLES[tab].en}
             </span>
