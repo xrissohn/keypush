@@ -195,9 +195,11 @@ function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/90 px-5 py-4 backdrop-blur">
       <div className="flex items-center gap-2.5">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-black text-white shadow-lg shadow-indigo-600/25">
-          K
-        </div>
+        <img
+          src={keypLogo}
+          alt="KeyP"
+          className="h-9 w-9 rounded-xl shadow-lg shadow-indigo-600/25"
+        />
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-600">
             KeyP × Daytona
