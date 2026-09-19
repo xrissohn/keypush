@@ -77,16 +77,24 @@ export async function runResearchInSandbox(input: {
     await writeFile(sandbox, `${RESEARCH_DIR}/research_agent.py`, RESEARCH_AGENT_PY);
     push("fs: wrote input.json + research_agent.py");
 
+    const lovableKey = process.env["LOVABLE_API_KEY"] || "";
     const envPrefix = [
       cfg.geminiKey ? `GEMINI_API_KEY=${sq(cfg.geminiKey)}` : "",
       cfg.grokKey ? `XAI_API_KEY=${sq(cfg.grokKey)}` : "",
+      // Gemini fallback only — the sandbox calls the Lovable AI gateway directly.
+      !cfg.geminiKey && lovableKey ? `LOVABLE_API_KEY=${sq(lovableKey)}` : "",
     ]
       .filter(Boolean)
       .join(" ");
 
     push(
       `exec: python3 research_agent.py (engines: ${
-        [cfg.geminiKey && "gemini", cfg.grokKey && "grok"].filter(Boolean).join(" + ") || "none configured"
+        [
+          cfg.geminiKey ? "gemini" : lovableKey ? "lovable(fallback)" : "",
+          cfg.grokKey && "grok",
+        ]
+          .filter(Boolean)
+          .join(" + ") || "none configured"
       })`,
     );
     const run = await exec(sandbox, `cd ${RESEARCH_DIR} && ${envPrefix} python3 research_agent.py`, {
