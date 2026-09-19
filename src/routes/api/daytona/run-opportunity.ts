@@ -3,7 +3,7 @@ import { z } from "zod";
 import { SAMPLE_COMPANY_PROFILE } from "@/lib/daytona/types";
 
 const evidenceSchema = z.object({
-  engine: z.string().max(40),
+  engine: z.enum(["gemini", "grok", "lovable"]),
   url: z.string().max(1000),
   title: z.string().max(400).default(""),
   statusCode: z.number().optional(),
@@ -25,7 +25,7 @@ const opportunitySchema = z.object({
   url: z.string().max(1000).default(""),
   sample: z.boolean().optional(),
   summary: z.string().max(4000).optional(),
-  discoveredBy: z.array(z.string().max(30)).max(5).optional(),
+  discoveredBy: z.array(z.enum(["gemini", "grok", "lovable"])).max(5).optional(),
   sourceType: z.enum(["official", "web", "x"]).optional(),
   sourceEvidence: z.array(evidenceSchema).max(20).optional(),
   xEvidence: z.array(evidenceSchema).max(20).optional(),
@@ -48,7 +48,7 @@ const bodySchema = z.object({
   research: z
     .object({
       query: z.string().max(500),
-      enginesUsed: z.array(z.string().max(30)).max(5),
+      enginesUsed: z.array(z.enum(["gemini", "grok", "lovable"])).max(5),
     })
     .optional(),
 });
