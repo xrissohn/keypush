@@ -115,16 +115,28 @@ def run_grok():
         "Request: %s\nCompany profile: %s\n\n%s"
         % (QUERY, PROMPT_PROFILE, SCHEMA_HINT)
     )
-    data = post_json(
-        "https://api.x.ai/v1/responses",
-        {
-            "model": GROK_MODEL,
-            "input": prompt,
-            "tools": [{"type": "web_search"}, {"type": "x_search"}],
-            "max_tool_calls": 6,
-        },
-        {"Authorization": "Bearer %s" % XAI_KEY},
-    )
+    # Grok with web_search + x_search tools routinely runs past 75s; give it a
+    # long window and one retry on read timeouts.
+    def _call(timeout):
+        return post_json(
+            "https://api.x.ai/v1/responses",
+            {
+                "model": GROK_MODEL,
+                "input": prompt,
+                "tools": [{"type": "web_search"}, {"type": "x_search"}],
+                "max_tool_calls": 6,
+            },
+            {"Authorization": "Bearer %s" % XAI_KEY},
+            timeout=timeout,
+        )
+
+    try:
+        data = _call(240)
+    except Exception as e:
+        if "timed out" not in str(e):
+            raise
+        log("grok: first attempt timed out — retrying once")
+        data = _call(240)
     text = ""
     cites = []
 
