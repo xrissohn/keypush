@@ -248,8 +248,11 @@ export async function runWatch(
       `[judge] ${findings.length} above threshold ${threshold}, ${belowThreshold} filtered out (not notified)`,
     );
 
-    // persist with dedupe: existing finding → refresh last_seen_at only (no re-notify)
-    for (const f of findings) {
+    // Baseline stores exactly one best verified reference (including the closest near miss).
+    // Later runs persist and return only truly new findings.
+    const persistable = trigger === "baseline" ? (findings.length ? findings : nearMisses.slice(0, 1)) : findings;
+    const newFindings: ContextFinding[] = [];
+    for (const f of persistable) {
       const { data: existing } = await sb
         .from("findings")
         .select("id, content_hash, semantic_fingerprint")
@@ -293,6 +296,7 @@ export async function runWatch(
         const { data: ins } = await sb.from("findings").insert(payload).select("id").single();
         f.id = ins?.["id"] as string | undefined;
         f.isNew = true;
+        newFindings.push(f);
         if (f.id) {
           await sb.from("source_evidence").insert(
             f.evidence.map((e) => ({
@@ -326,7 +330,7 @@ export async function runWatch(
           status: "success",
           engines_used: enginesUsed,
           step_logs: logs,
-          findings_count: findings.length,
+           findings_count: trigger === "baseline" ? persistable.length : newFindings.length,
           finished_at: new Date().toISOString(),
         })
         .eq("id", runId);
@@ -351,7 +355,7 @@ export async function runWatch(
       enginesUsed,
       engineErrors: routed.engineErrors,
       blockedSources: routed.blockedSources,
-      findings,
+       findings: trigger === "baseline" ? findings : newFindings,
       nearMisses,
       belowThreshold,
       logs,
