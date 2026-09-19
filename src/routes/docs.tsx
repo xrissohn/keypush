@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import keypLogo from "@/assets/keyp-logo.svg";
 
 export const Route = createFileRoute("/docs")({
   staticData: { sitemap: true },
