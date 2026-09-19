@@ -226,6 +226,75 @@ Generated Application Package
             <code className="font-mono">src/lib/daytona/client.server.ts</code>)를 사용합니다.
           </p>
         </Section>
+
+        <Section title="🔎 Multi-Source Research Agent (Gemini + Grok + Daytona)">
+          <Code>{`1. Lovable UI / KeyP orchestration
+2. Daytona isolated research runtime (모든 수집·검증이 샌드박스 안에서 실행)
+3. Gemini — Google Search grounding (공식 출처 우선)
+4. Grok — web_search + x_search (X/트위터 발표·커뮤니티 신호)
+5. Direct source verification — 후보 URL에 실제 HTTP GET (status/final URL/title/snippet)
+6. Evidence fusion — 중복 제거, 출처 등급, 신뢰도 산정
+7. Application package generation — eligibility + 지원 서류 초안`}</Code>
+
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">엔드포인트</h3>
+          <table className="w-full overflow-hidden rounded-lg border border-slate-200 text-sm">
+            <tbody className="bg-white">
+              <tr className="border-t border-slate-100">
+                <td className="px-4 py-2 font-mono text-blue-600">GET</td>
+                <td className="px-4 py-2 font-mono">/api/research/status</td>
+                <td className="px-4 py-2 text-slate-600">
+                  {`{daytonaConfigured, geminiConfigured, grokConfigured, lovableAiAvailable, geminiModel, grokModel}`}
+                </td>
+              </tr>
+              <tr className="border-t border-slate-100">
+                <td className="px-4 py-2 font-mono text-emerald-600">POST</td>
+                <td className="px-4 py-2 font-mono">/api/research/opportunities</td>
+                <td className="px-4 py-2 text-slate-600">라이브 리서치 → 검증된 기회 목록</td>
+              </tr>
+            </tbody>
+          </table>
+          <Code>{`// 요청
+{ "query": "서울 AI 스타트업 정부지원사업/해커톤", "companyProfile": { ... }, "maxResults": 8 }
+
+// 응답 (성공)
+{ "ok": true, "sandboxId": "…", "enginesUsed": ["gemini","grok"], "query": "…",
+  "results": [{ "id": "...", "title": "...", "deadline": "공식 공고 확인 필요",
+                "url": "https://...", "sample": false,
+                "discoveredBy": ["gemini"], "sourceType": "official",
+                "sourceEvidence": [{ "engine": "gemini", "url": "...", "statusCode": 200, "snippet": "..." }],
+                "xEvidence": [...], "verified": true, "confidence": 84 }],
+  "logs": [...], "engineErrors": [...], "elapsedMs": 41234 }
+
+// 응답 (Daytona 미설정 — 가짜 라이브 결과 없음, HTTP 503)
+{ "ok": false, "code": "not_configured", "error": "DAYTONA_API_KEY is not configured..." }`}</Code>
+
+          <h3 className="mt-5 mb-2 text-sm font-bold text-slate-900">시크릿</h3>
+          <ul className="ml-5 list-disc space-y-1.5 text-sm text-slate-700">
+            <li>
+              <code className="font-mono text-xs">DAYTONA_API_KEY</code> — <b>필수</b>. 라이브 샌드박스 리서치/실행.
+            </li>
+            <li>
+              <code className="font-mono text-xs">GEMINI_API_KEY</code> — 권장. Google Search 그라운딩 기반 라이브 웹
+              리서치 (<code className="font-mono text-xs">GEMINI_MODEL</code> 기본 gemini-2.5-flash).
+            </li>
+            <li>
+              <code className="font-mono text-xs">XAI_API_KEY</code> — 선택(권장). Grok x_search + web_search (
+              <code className="font-mono text-xs">GROK_MODEL</code> 기본 grok-4.6).
+            </li>
+          </ul>
+          <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+            <b>Cursor 크레딧 안내</b> — Cursor의 Grok 크레딧은 Cursor 안에서만 적용되며, 배포된 이 KeyP 앱의{" "}
+            <code className="font-mono">XAI_API_KEY</code> 결제로 사용할 수 없습니다. Grok X Search를 켜려면 xAI API
+            키를 <code className="font-mono">XAI_API_KEY</code>로 추가하세요.
+          </p>
+          <ul className="mt-3 ml-5 list-disc space-y-1.5 text-sm text-slate-700">
+            <li>GEMINI_API_KEY 미설정 시: 직접 Google Search 그라운딩 없음 — 추론/요약 폴백만 사용하며 라이브 검색이 일어난 것처럼 표기하지 않습니다.</li>
+            <li>XAI_API_KEY 미설정 시: X 결과를 생성하지 않고 상태를 “연결 필요”로 표시합니다.</li>
+            <li>마감일은 절대 추정하지 않습니다 — 근거가 없으면 “공식 공고 확인 필요”로 남습니다.</li>
+            <li>소셜 근거만 있는 항목은 Needs verification으로 표시되며 official 사실을 덮어쓰지 않습니다.</li>
+          </ul>
+        </Section>
+
       </div>
     </div>
   );

@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiResearchStatusRouteImport } from './routes/api/research/status'
+import { Route as ApiResearchOpportunitiesRouteImport } from './routes/api/research/opportunities'
 import { Route as ApiDaytonaStatusRouteImport } from './routes/api/daytona/status'
 import { Route as ApiDaytonaRunOpportunityRouteImport } from './routes/api/daytona/run-opportunity'
 import { Route as ApiPublicKeypSearchRouteImport } from './routes/api/public/keyp/search'
@@ -25,6 +27,17 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiResearchStatusRoute = ApiResearchStatusRouteImport.update({
+  id: '/api/research/status',
+  path: '/api/research/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiResearchOpportunitiesRoute =
+  ApiResearchOpportunitiesRouteImport.update({
+    id: '/api/research/opportunities',
+    path: '/api/research/opportunities',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiDaytonaStatusRoute = ApiDaytonaStatusRouteImport.update({
   id: '/api/daytona/status',
   path: '/api/daytona/status',
@@ -47,6 +60,8 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
+  '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
+  '/api/research/status': typeof ApiResearchStatusRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
 }
 export interface FileRoutesByTo {
@@ -54,6 +69,8 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
+  '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
+  '/api/research/status': typeof ApiResearchStatusRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
 }
 export interface FileRoutesById {
@@ -62,6 +79,8 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
+  '/api/research/opportunities': typeof ApiResearchOpportunitiesRoute
+  '/api/research/status': typeof ApiResearchStatusRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
 }
 export interface FileRouteTypes {
@@ -71,6 +90,8 @@ export interface FileRouteTypes {
     | '/docs'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
+    | '/api/research/opportunities'
+    | '/api/research/status'
     | '/api/public/keyp/search'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -78,6 +99,8 @@ export interface FileRouteTypes {
     | '/docs'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
+    | '/api/research/opportunities'
+    | '/api/research/status'
     | '/api/public/keyp/search'
   id:
     | '__root__'
@@ -85,6 +108,8 @@ export interface FileRouteTypes {
     | '/docs'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
+    | '/api/research/opportunities'
+    | '/api/research/status'
     | '/api/public/keyp/search'
   fileRoutesById: FileRoutesById
 }
@@ -93,6 +118,8 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   ApiDaytonaRunOpportunityRoute: typeof ApiDaytonaRunOpportunityRoute
   ApiDaytonaStatusRoute: typeof ApiDaytonaStatusRoute
+  ApiResearchOpportunitiesRoute: typeof ApiResearchOpportunitiesRoute
+  ApiResearchStatusRoute: typeof ApiResearchStatusRoute
   ApiPublicKeypSearchRoute: typeof ApiPublicKeypSearchRoute
 }
 
@@ -110,6 +137,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/research/status': {
+      id: '/api/research/status'
+      path: '/api/research/status'
+      fullPath: '/api/research/status'
+      preLoaderRoute: typeof ApiResearchStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/research/opportunities': {
+      id: '/api/research/opportunities'
+      path: '/api/research/opportunities'
+      fullPath: '/api/research/opportunities'
+      preLoaderRoute: typeof ApiResearchOpportunitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/daytona/status': {
@@ -141,6 +182,8 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRoute,
   ApiDaytonaRunOpportunityRoute: ApiDaytonaRunOpportunityRoute,
   ApiDaytonaStatusRoute: ApiDaytonaStatusRoute,
+  ApiResearchOpportunitiesRoute: ApiResearchOpportunitiesRoute,
+  ApiResearchStatusRoute: ApiResearchStatusRoute,
   ApiPublicKeypSearchRoute: ApiPublicKeypSearchRoute,
 }
 export const routeTree = rootRouteImport
