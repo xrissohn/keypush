@@ -1130,7 +1130,7 @@ function ResultDetailSheet({ run, onClose }: { run: RunResultOk; onClose: () => 
             <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Run detail</div>
             <h3 className="text-sm font-bold leading-snug text-slate-900">{run.opportunity.title}</h3>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <button onClick={onClose} aria-label="닫기" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
             <X className="h-4 w-4" />
           </button>
         </div>
