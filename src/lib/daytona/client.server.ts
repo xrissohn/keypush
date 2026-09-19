@@ -1,13 +1,13 @@
 // Server-only minimal Daytona Cloud API client (fetch based, edge-runtime safe).
-// The official @daytonaio/sdk depends on Node-only modules (opentelemetry sdk-node,
-// tar, fast-glob, ws) that cannot be bundled for this project's Worker runtime,
-// so we talk to the same public Daytona API directly.
+// The official TypeScript SDK (@daytona/sdk) depends on Node-only modules
+// (opentelemetry sdk-node, tar, fast-glob, ws) that cannot be bundled for this
+// project's Worker runtime, so we talk to the same public Daytona API directly.
 //
-// API surface used (Daytona API v0.214 shape):
-//   POST   {apiUrl}/sandbox                     -> create sandbox
-//   GET    {apiUrl}/sandbox/{id}                -> poll state, read toolboxProxyUrl
-//   DELETE {apiUrl}/sandbox/{id}                -> destroy sandbox
-//   POST   {toolboxProxyUrl}/{id}/process/execute -> run a shell command inside it
+// API surface used (current Daytona Cloud API shape):
+//   POST   {apiUrl}/sandbox                         -> create sandbox
+//   GET    {apiUrl}/sandbox/{id}                    -> poll state, read toolboxProxyUrl
+//   DELETE {apiUrl}/sandbox/{id}                    -> destroy sandbox
+//   POST   https://proxy.app.daytona.io/toolbox/{id}/process/execute -> run a shell command inside it
 
 const DEFAULT_API_URL = "https://app.daytona.io/api";
 
