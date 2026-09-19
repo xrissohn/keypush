@@ -29,6 +29,79 @@ function sq(v: string) {
   return `'${v.replace(/'/g, `'\\''`)}'`;
 }
 
+/**
+ * Gemini-lane fallback via Lovable AI (server-side: the sandbox network cannot
+ * reach the gateway). Knowledge-only — no live web search — so every candidate
+ * still goes through direct URL verification inside the sandbox.
+ */
+async function fetchLovableCandidates(
+  query: string,
+  profile: CompanyProfile,
+  maxResults: number,
+): Promise<Array<Record<string, unknown>>> {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) return [];
+  const prompt = [
+    "You are the research engine for KeyP. From your own knowledge, list funding, grant,",
+    "competition, accelerator and hackathon opportunities matching this request.",
+    "You have NO web access in this call — only list programs you are confident exist,",
+    "with their official homepage URL. If unsure of a deadline, set deadline to \"\" — never invent one.",
+    "",
+    `Request: ${query}`,
+    `Company profile: ${JSON.stringify(profile)}`,
+    "",
+    `Return ONLY a JSON array (no prose, no markdown fences) of up to ${maxResults} objects with keys:`,
+    '"title","category","deadline","organizer","location","summary","why","url".',
+  ].join("\n");
+
+  // stream: reasoning calls can run long; bytes must flow to survive timeouts
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+    body: JSON.stringify({
+      model: "openai/gpt-6-astra",
+      messages: [{ role: "user", content: prompt }],
+      reasoning_effort: "low",
+      stream: true,
+    }),
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`Lovable AI gateway returned HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop() ?? "";
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t.startsWith("data:")) continue;
+      const payload = t.slice(5).trim();
+      if (payload === "[DONE]") continue;
+      try {
+        const delta = JSON.parse(payload)?.choices?.[0]?.delta?.content;
+        if (typeof delta === "string") text += delta;
+      } catch {
+        /* partial chunk */
+      }
+    }
+  }
+  const s = text.indexOf("[");
+  const e = text.lastIndexOf("]");
+  if (s === -1 || e <= s) return [];
+  try {
+    const arr = JSON.parse(text.slice(s, e + 1));
+    return Array.isArray(arr) ? arr.slice(0, maxResults * 2) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function runResearchInSandbox(input: {
   query: string;
   companyProfile?: CompanyProfile;
