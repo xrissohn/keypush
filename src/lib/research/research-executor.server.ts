@@ -115,6 +115,7 @@ export async function runResearchInSandbox(input: {
     push(`merge: ${parsed.results.length} ranked opportunities returned`);
 
     const noLive = parsed.enginesUsed.length === 0;
+    const lovableOnly = parsed.enginesUsed.includes("lovable") && !parsed.enginesUsed.includes("gemini");
     return {
       ok: true,
       sandboxId: sandbox.id,
@@ -126,7 +127,9 @@ export async function runResearchInSandbox(input: {
         ? "No live search engine configured — no live Gemini Google Search or Grok X Search was performed. Add GEMINI_API_KEY and/or XAI_API_KEY to enable live research."
         : cfg.geminiKey
           ? undefined
-          : "Direct Gemini Google Search grounding unavailable (GEMINI_API_KEY missing).",
+          : lovableOnly || parsed.enginesUsed.includes("lovable")
+            ? "Gemini direct grounding unavailable (GEMINI_API_KEY missing) — Lovable AI knowledge fallback was used for the Gemini lane; its candidates are model knowledge, not live search results, and were verified by direct URL fetch."
+            : "Direct Gemini Google Search grounding unavailable (GEMINI_API_KEY missing).",
       results: parsed.results,
       logs,
       elapsedMs: Date.now() - t0,

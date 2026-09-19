@@ -501,7 +501,10 @@ function OpportunitiesTab({
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <EngineChip label="Daytona" on={engines?.daytonaConfigured} />
-        <EngineChip label="Gemini" on={engines?.geminiConfigured} />
+        <EngineChip
+          label={engines?.geminiConfigured ? "Gemini" : "Gemini → Lovable AI"}
+          on={engines?.geminiConfigured || engines?.lovableAiAvailable}
+        />
         <EngineChip label="Grok" on={engines?.grokConfigured} />
       </div>
 
@@ -639,6 +642,7 @@ function OpportunityCard({ o, onRun }: { o: Opportunity; onRun: () => void }) {
         <Badge tone="indigo">{o.category}</Badge>
         {o.sample && <Badge tone="slate">SAMPLE DATA</Badge>}
         {o.discoveredBy?.includes("gemini") && <Badge tone="violet">Gemini</Badge>}
+        {o.discoveredBy?.includes("lovable") && <Badge tone="indigo">Lovable AI</Badge>}
         {o.discoveredBy?.includes("grok") && <Badge tone="violet">Grok</Badge>}
         {xEv.length > 0 && <Badge tone="dark">X</Badge>}
         {o.sourceType === "official" && <Badge tone="emerald">Official</Badge>}
