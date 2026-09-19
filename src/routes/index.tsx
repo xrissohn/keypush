@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Activity,
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: KeypDaytonaApp;
+  component: KeypDaytonaApp,
 });
 
 type Tab = "dashboard" | "opportunities" | "runs" | "results";
