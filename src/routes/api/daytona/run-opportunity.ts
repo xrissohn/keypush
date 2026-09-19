@@ -6,7 +6,7 @@ const evidenceSchema = z.object({
   engine: z.enum(["gemini", "grok", "lovable"]),
   url: z.string().max(1000),
   title: z.string().max(400).default(""),
-  statusCode: z.number().optional(),
+  statusCode: z.number().nullable().default(null),
   finalUrl: z.string().max(1000).optional(),
   snippet: z.string().max(4000).default(""),
   accessible: z.boolean().optional(),
