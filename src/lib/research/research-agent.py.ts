@@ -360,6 +360,8 @@ def add_candidate(item, engine, extra_chunks):
 
 for it in gemini_out["items"][: MAX_RESULTS * 2]:
     add_candidate(it, "gemini", gemini_out["chunks"])
+for it in lovable_out["items"][: MAX_RESULTS * 2]:
+    add_candidate(it, "lovable", lovable_out["chunks"])
 for it in grok_out["items"][: MAX_RESULTS * 2]:
     add_candidate(it, "grok", grok_out["chunks"])
 
