@@ -17,6 +17,8 @@ export type Database = {
       context_watches: {
         Row: {
           active: boolean
+          baseline_at: string
+          baseline_completed_at: string | null
           created_at: string
           id: string
           intent_summary: string
@@ -32,6 +34,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          baseline_at?: string
+          baseline_completed_at?: string | null
           created_at?: string
           id?: string
           intent_summary?: string
@@ -47,6 +51,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          baseline_at?: string
+          baseline_completed_at?: string | null
           created_at?: string
           id?: string
           intent_summary?: string
@@ -64,7 +70,9 @@ export type Database = {
       }
       findings: {
         Row: {
+          canonical_url: string | null
           confidence: number
+          content_hash: string | null
           contradictions: Json
           created_at: string
           dedupe_key: string
@@ -72,11 +80,14 @@ export type Database = {
           evidence: Json
           first_seen_at: string
           id: string
+          is_baseline: boolean
           last_seen_at: string
           match_score: number
           matched_constraints: Json
           missing_constraints: Json
+          published_at: string | null
           run_id: string | null
+          semantic_fingerprint: string | null
           source_type: string
           source_url: string
           summary: string
@@ -87,7 +98,9 @@ export type Database = {
           why_matched: string
         }
         Insert: {
+          canonical_url?: string | null
           confidence?: number
+          content_hash?: string | null
           contradictions?: Json
           created_at?: string
           dedupe_key: string
@@ -95,11 +108,14 @@ export type Database = {
           evidence?: Json
           first_seen_at?: string
           id?: string
+          is_baseline?: boolean
           last_seen_at?: string
           match_score?: number
           matched_constraints?: Json
           missing_constraints?: Json
+          published_at?: string | null
           run_id?: string | null
+          semantic_fingerprint?: string | null
           source_type?: string
           source_url: string
           summary?: string
@@ -110,7 +126,9 @@ export type Database = {
           why_matched?: string
         }
         Update: {
+          canonical_url?: string | null
           confidence?: number
+          content_hash?: string | null
           contradictions?: Json
           created_at?: string
           dedupe_key?: string
@@ -118,11 +136,14 @@ export type Database = {
           evidence?: Json
           first_seen_at?: string
           id?: string
+          is_baseline?: boolean
           last_seen_at?: string
           match_score?: number
           matched_constraints?: Json
           missing_constraints?: Json
+          published_at?: string | null
           run_id?: string | null
+          semantic_fingerprint?: string | null
           source_type?: string
           source_url?: string
           summary?: string
@@ -157,6 +178,7 @@ export type Database = {
           finding_id: string
           id: string
           payload: Json
+          read_at: string | null
           sent_at: string | null
           status: string
           watch_id: string
@@ -168,6 +190,7 @@ export type Database = {
           finding_id: string
           id?: string
           payload?: Json
+          read_at?: string | null
           sent_at?: string | null
           status?: string
           watch_id: string
@@ -179,6 +202,7 @@ export type Database = {
           finding_id?: string
           id?: string
           payload?: Json
+          read_at?: string | null
           sent_at?: string | null
           status?: string
           watch_id?: string
@@ -306,6 +330,8 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: {
           active: boolean
+          baseline_at: string
+          baseline_completed_at: string | null
           created_at: string
           id: string
           intent_summary: string

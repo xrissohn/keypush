@@ -16,7 +16,15 @@ export const Route = createFileRoute("/api/watches/$id/run")({
           const status = result.code === "not_found" ? 404 : result.code === "not_configured" ? 503 : 502;
           return Response.json(result, { status });
         }
-        return Response.json(result);
+        return Response.json({
+          ok: true,
+          watchId: result.watchId,
+          runId: result.runId,
+          findings: result.findings,
+          nearMisses: result.nearMisses,
+          belowThreshold: result.belowThreshold,
+          elapsedMs: result.elapsedMs,
+        });
       },
     },
   },

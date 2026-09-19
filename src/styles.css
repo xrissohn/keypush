@@ -59,11 +59,17 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-user-bubble: var(--user-bubble);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.985 0.002 265);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
@@ -95,6 +101,12 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --brand: oklch(0.545 0.22 275);
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-soft: oklch(0.955 0.025 275);
+  --user-bubble: oklch(0.94 0.008 265);
+  --success: oklch(0.49 0.14 157);
+  --success-soft: oklch(0.96 0.035 157);
 }
 
 .dark {
@@ -130,6 +142,12 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --brand: oklch(0.68 0.18 275);
+  --brand-foreground: oklch(0.14 0.02 265);
+  --brand-soft: oklch(0.27 0.06 275);
+  --user-bubble: oklch(0.25 0.025 265);
+  --success: oklch(0.73 0.15 157);
+  --success-soft: oklch(0.26 0.05 157);
 }
 
 @layer base {
@@ -140,5 +158,8 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    letter-spacing: 0;
   }
 }
