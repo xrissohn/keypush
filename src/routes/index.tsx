@@ -23,7 +23,6 @@ import {
   Terminal,
   X,
 } from "lucide-react";
-import { keypClient } from "@/lib/keyp/client";
 import {
   RUN_STEP_LABELS,
   SAMPLE_COMPANY_PROFILE,
@@ -33,6 +32,13 @@ import {
   type RunStep,
 } from "@/lib/daytona/types";
 import {
+  RESEARCH_STEPS,
+  type ResearchEngine,
+  type ResearchEngineStatus,
+  type ResearchResponse,
+  type ResearchResultItem,
+} from "@/lib/research/types";
+import {
   clearRuns,
   loadOpportunities,
   loadRuns,
@@ -40,6 +46,7 @@ import {
   saveOpportunities,
   saveRun,
 } from "@/lib/daytona/storage";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -71,15 +78,18 @@ function KeypDaytonaApp() {
   const [runs, setRuns] = useState<RunResultOk[]>([]);
   const [selected, setSelected] = useState<Opportunity | null>(null);
   const [detail, setDetail] = useState<RunResultOk | null>(null);
+  const [research, setResearch] = useState<{ query: string; enginesUsed: ResearchEngine[] } | null>(null);
 
   const status = useQuery({
-    queryKey: ["daytona-status"],
+    queryKey: ["research-status"],
     queryFn: async () => {
-      const res = await fetch("/api/daytona/status");
-      return (await res.json()) as { configured: boolean };
+      const res = await fetch("/api/research/status");
+      return (await res.json()) as ResearchEngineStatus;
     },
     staleTime: 30_000,
   });
+  const st = status.data;
+  const configured = st?.daytonaConfigured ?? false;
 
   useEffect(() => {
     setOpportunities(loadOpportunities());
@@ -102,18 +112,19 @@ function KeypDaytonaApp() {
     setRuns(r);
     setSelected(null);
     setDetail(null);
+    setResearch(null);
   }
 
   return (
     <div className="min-h-screen bg-slate-950/[0.03] bg-gradient-to-b from-slate-50 via-white to-slate-100">
-      <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col bg-white shadow-2xl md:max-w-[720px]">
-        <TopBar tab={tab} configured={status.data?.configured ?? false} />
+      <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col bg-white shadow-2xl md:max-w-[820px]">
+        <TopBar tab={tab} configured={configured} />
         <main className="flex-1 overflow-y-auto pb-28">
           {!hydrated ? null : tab === "dashboard" ? (
             <DashboardTab
               opportunities={opportunities}
               runs={runs}
-              configured={status.data?.configured ?? false}
+              engines={st}
               statusLoading={status.isLoading}
               onFind={() => setTab("opportunities")}
               onResetDemo={onResetDemo}
@@ -121,7 +132,9 @@ function KeypDaytonaApp() {
           ) : tab === "opportunities" ? (
             <OpportunitiesTab
               opportunities={opportunities}
+              engines={st}
               onChange={updateOpportunities}
+              onResearch={setResearch}
               onSelect={(o) => {
                 setSelected(o);
                 setTab("runs");
@@ -130,7 +143,8 @@ function KeypDaytonaApp() {
           ) : tab === "runs" ? (
             <AgentRunsTab
               opportunity={selected}
-              configured={status.data?.configured ?? false}
+              configured={configured}
+              research={research}
               onComplete={onRunComplete}
               onGoOpportunities={() => setTab("opportunities")}
               onGoResults={() => setTab("results")}
@@ -152,6 +166,7 @@ function KeypDaytonaApp() {
     </div>
   );
 }
+
 
 /* ─────────── Chrome ─────────── */
 
