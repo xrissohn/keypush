@@ -50,7 +50,9 @@ SCHEMA_HINT = (
 def extract_json_array(text):
     if not text:
         return []
-    m = re.search(r"```(?:json)?\s*([\[{][\s\S]*?)```", text)
+    fence = chr(96) * 3
+    m = re.search(fence + r"(?:json)?\s*([\[{][\s\S]*?)" + fence, text)
+
     raw = m.group(1) if m else None
     if raw is None:
         s = text.find("[")
