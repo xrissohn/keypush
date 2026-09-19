@@ -77,12 +77,23 @@ export async function runResearchInSandbox(input: {
     await writeFile(sandbox, `${RESEARCH_DIR}/research_agent.py`, RESEARCH_AGENT_PY);
     push("fs: wrote input.json + research_agent.py");
 
-    const lovableKey = process.env["LOVABLE_API_KEY"] || "";
+    // Lovable AI fallback for the Gemini lane. The sandbox network cannot reach
+    // the AI gateway, so the call happens server-side and parsed candidates are
+    // handed to the sandbox as a JSON file for verification + fusion.
+    if (!cfg.geminiKey && cfg.lovableAiAvailable) {
+      push("lovable: requesting knowledge-based candidates from Lovable AI (server-side)…");
+      try {
+        const items = await fetchLovableCandidates(input.query, profile, maxResults);
+        await writeFile(sandbox, `${RESEARCH_DIR}/lovable-candidates.json`, JSON.stringify({ items }));
+        push(`lovable: ${items.length} candidates written to sandbox (model knowledge, not live search)`);
+      } catch (e) {
+        push(`lovable: fallback failed — ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
     const envPrefix = [
       cfg.geminiKey ? `GEMINI_API_KEY=${sq(cfg.geminiKey)}` : "",
       cfg.grokKey ? `XAI_API_KEY=${sq(cfg.grokKey)}` : "",
-      // Gemini fallback only — the sandbox calls the Lovable AI gateway directly.
-      !cfg.geminiKey && lovableKey ? `LOVABLE_API_KEY=${sq(lovableKey)}` : "",
     ]
       .filter(Boolean)
       .join(" ");
