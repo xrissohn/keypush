@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWatchesRouteImport } from './routes/api/watches'
@@ -20,6 +21,11 @@ import { Route as ApiDaytonaRunOpportunityRouteImport } from './routes/api/dayto
 import { Route as ApiWatchesIdRunRouteImport } from './routes/api/watches.$id.run'
 import { Route as ApiPublicKeypSearchRouteImport } from './routes/api/public/keyp/search'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
@@ -76,6 +82,7 @@ const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
   '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
   '/api/daytona/status': typeof ApiDaytonaStatusRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/docs'
+    | '/sitemap.xml'
     | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/docs'
+    | '/sitemap.xml'
     | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/docs'
+    | '/sitemap.xml'
     | '/api/watches'
     | '/api/daytona/run-opportunity'
     | '/api/daytona/status'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiWatchesRoute: typeof ApiWatchesRouteWithChildren
   ApiDaytonaRunOpportunityRoute: typeof ApiDaytonaRunOpportunityRoute
   ApiDaytonaStatusRoute: typeof ApiDaytonaStatusRoute
@@ -163,6 +176,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs': {
       id: '/docs'
       path: '/docs'
@@ -251,6 +271,7 @@ const ApiWatchesRouteWithChildren = ApiWatchesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiWatchesRoute: ApiWatchesRouteWithChildren,
   ApiDaytonaRunOpportunityRoute: ApiDaytonaRunOpportunityRoute,
   ApiDaytonaStatusRoute: ApiDaytonaStatusRoute,
