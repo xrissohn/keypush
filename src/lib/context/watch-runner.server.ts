@@ -297,10 +297,11 @@ export async function runWatch(
         f.id = ins?.["id"] as string | undefined;
         f.isNew = true;
         newFindings.push(f);
-        if (f.id) {
+        const findingId = f.id;
+        if (findingId) {
           await sb.from("source_evidence").insert(
             f.evidence.map((e) => ({
-              finding_id: f.id,
+              finding_id: findingId,
               engine: e.engine,
               url: e.url,
               title: e.title,
@@ -314,7 +315,7 @@ export async function runWatch(
             .from("notification_queue")
             .insert({
               watch_id: watchId,
-              finding_id: f.id,
+              finding_id: findingId,
               payload: { title: f.title, url: f.sourceUrl, matchScore: f.matchScore },
             })
             .select("id");
@@ -376,12 +377,16 @@ export async function runWatch(
 
 export async function updateWatch(watchId: string, input: { active?: boolean; refreshMinutes?: number }) {
   const sb = await db();
-  const patch: Record<string, boolean | number | string> = {};
-  if (typeof input.active === "boolean") patch["active"] = input.active;
-  if (typeof input.refreshMinutes === "number") {
-    patch["refresh_minutes"] = Math.min(Math.max(Math.round(input.refreshMinutes), 15), 10080);
-    patch["next_run_at"] = new Date(Date.now() + Number(patch["refresh_minutes"]) * 60_000).toISOString();
-  }
+  const refreshMinutes = typeof input.refreshMinutes === "number"
+    ? Math.min(Math.max(Math.round(input.refreshMinutes), 15), 10080)
+    : undefined;
+  const patch = {
+    ...(typeof input.active === "boolean" ? { active: input.active } : {}),
+    ...(refreshMinutes === undefined ? {} : {
+      refresh_minutes: refreshMinutes,
+      next_run_at: new Date(Date.now() + refreshMinutes * 60_000).toISOString(),
+    }),
+  };
   const { data, error } = await sb.from("context_watches").update(patch).eq("id", watchId).select("*").single();
   if (error || !data) throw new Error(error?.message ?? "watch update failed");
   return rowToWatch(data);
