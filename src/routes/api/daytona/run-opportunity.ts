@@ -2,6 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { SAMPLE_COMPANY_PROFILE } from "@/lib/daytona/types";
 
+const evidenceSchema = z.object({
+  engine: z.string().max(40),
+  url: z.string().max(1000),
+  title: z.string().max(400).default(""),
+  statusCode: z.number().optional(),
+  finalUrl: z.string().max(1000).optional(),
+  snippet: z.string().max(4000).default(""),
+  accessible: z.boolean().optional(),
+  isX: z.boolean().optional(),
+});
+
 const opportunitySchema = z.object({
   id: z.string().min(1).max(200),
   title: z.string().min(1).max(300),
@@ -13,6 +24,13 @@ const opportunitySchema = z.object({
   why: z.string().max(2000).default(""),
   url: z.string().max(1000).default(""),
   sample: z.boolean().optional(),
+  summary: z.string().max(4000).optional(),
+  discoveredBy: z.array(z.string().max(30)).max(5).optional(),
+  sourceType: z.enum(["official", "web", "x"]).optional(),
+  sourceEvidence: z.array(evidenceSchema).max(20).optional(),
+  xEvidence: z.array(evidenceSchema).max(20).optional(),
+  verified: z.boolean().optional(),
+  confidence: z.number().min(0).max(100).optional(),
 });
 
 const profileSchema = z.object({
@@ -27,7 +45,14 @@ const bodySchema = z.object({
   opportunity: opportunitySchema,
   companyProfile: profileSchema.optional(),
   demoMode: z.boolean().optional(),
+  research: z
+    .object({
+      query: z.string().max(500),
+      enginesUsed: z.array(z.string().max(30)).max(5),
+    })
+    .optional(),
 });
+
 
 export const Route = createFileRoute("/api/daytona/run-opportunity")({
   server: {
@@ -47,7 +72,7 @@ export const Route = createFileRoute("/api/daytona/run-opportunity")({
           );
         }
 
-        const { opportunity, companyProfile = SAMPLE_COMPANY_PROFILE, demoMode } = parsed.data;
+        const { opportunity, companyProfile = SAMPLE_COMPANY_PROFILE, demoMode, research } = parsed.data;
         const { runOpportunityInSandbox, simulateOpportunityRun } = await import(
           "@/lib/daytona/opportunity-executor.server"
         );
@@ -56,7 +81,8 @@ export const Route = createFileRoute("/api/daytona/run-opportunity")({
           return Response.json(simulateOpportunityRun(opportunity, companyProfile));
         }
 
-        const result = await runOpportunityInSandbox(opportunity, companyProfile);
+        const result = await runOpportunityInSandbox(opportunity, companyProfile, research);
+
         if (!result.ok) {
           return Response.json(result, { status: result.code === "not_configured" ? 503 : 502 });
         }
