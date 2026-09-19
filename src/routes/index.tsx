@@ -648,7 +648,10 @@ function AgentRunsTab({
           </div>
 
           <ol className="space-y-0 px-4 py-3">
-            {(steps.length ? steps : RUN_STEP_LABELS.map((s) => ({ key: s.key, label: s.label, status: "pending" as const }))).map(
+            {(steps.length
+              ? steps
+              : RUN_STEP_LABELS.map<RunStep>((s) => ({ key: s.key, label: s.label, status: "pending" }))
+            ).map(
               (s, i) => {
                 const ko = RUN_STEP_LABELS.find((x) => x.key === s.key)?.ko ?? "";
                 return (
