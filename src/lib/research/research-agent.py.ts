@@ -20,6 +20,8 @@ MAX_FETCH = int(cfg.get("maxFetch", 12))
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 XAI_KEY = os.environ.get("XAI_API_KEY", "")
+LOVABLE_KEY = os.environ.get("LOVABLE_API_KEY", "")
+LOVABLE_MODEL = cfg.get("lovableModel", "openai/gpt-6-astra")
 
 logs = []
 engines_used = []
