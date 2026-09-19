@@ -108,6 +108,40 @@ def run_gemini():
     log("gemini: parsed %d candidate opportunities" % len(items))
     return {"items": items, "chunks": chunks, "queries": queries, "text": text[:4000]}
 
+# ─────────── A2) Lovable AI fallback (no live Google Search grounding) ───────────
+# Used when GEMINI_API_KEY is absent. Calls the Lovable AI Gateway chat endpoint
+# from inside the sandbox. This is model knowledge only — no live web search
+# happens here, so results are always labeled discoveredBy=["lovable"] and must
+# go through the same direct-URL verification as everything else.
+def run_lovable():
+    prompt = (
+        "You are the research engine for KeyP. From your own knowledge, list "
+        "funding, grant, competition, accelerator and hackathon opportunities "
+        "matching this request. You have NO web access in this call — only list "
+        "programs you are confident exist, with their official homepage URL. "
+        "If unsure of a deadline, set deadline to \"\" — never invent one.\n\n"
+        "Request: %s\nCompany profile: %s\n\n%s"
+        % (QUERY, PROMPT_PROFILE, SCHEMA_HINT)
+    )
+    data = post_json(
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        {
+            "model": LOVABLE_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "reasoning_effort": "low",
+        },
+        {"Lovable-API-Key": LOVABLE_KEY},
+        timeout=180,
+    )
+    choices = data.get("choices") or []
+    text = ""
+    if choices:
+        text = ((choices[0].get("message") or {}).get("content")) or ""
+    log("lovable: model=%s (knowledge-only fallback, no live search)" % LOVABLE_MODEL)
+    items = extract_json_array(text)
+    log("lovable: parsed %d candidate opportunities" % len(items))
+    return {"items": items, "chunks": [], "queries": [], "text": text[:4000]}
+
 # ─────────── B) Grok web_search + x_search ───────────
 def run_grok():
     prompt = (
