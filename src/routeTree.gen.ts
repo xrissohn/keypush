@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiDaytonaStatusRouteImport } from './routes/api/daytona/status'
+import { Route as ApiDaytonaRunOpportunityRouteImport } from './routes/api/daytona/run-opportunity'
 import { Route as ApiPublicKeypSearchRouteImport } from './routes/api/public/keyp/search'
 
 const DocsRoute = DocsRouteImport.update({
@@ -23,6 +25,17 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDaytonaStatusRoute = ApiDaytonaStatusRouteImport.update({
+  id: '/api/daytona/status',
+  path: '/api/daytona/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDaytonaRunOpportunityRoute =
+  ApiDaytonaRunOpportunityRouteImport.update({
+    id: '/api/daytona/run-opportunity',
+    path: '/api/daytona/run-opportunity',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
   id: '/api/public/keyp/search',
   path: '/api/public/keyp/search',
@@ -32,30 +45,54 @@ const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
+  '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
+  '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/api/daytona/run-opportunity': typeof ApiDaytonaRunOpportunityRoute
+  '/api/daytona/status': typeof ApiDaytonaStatusRoute
   '/api/public/keyp/search': typeof ApiPublicKeypSearchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/docs' | '/api/public/keyp/search'
+  fullPaths:
+    | '/'
+    | '/docs'
+    | '/api/daytona/run-opportunity'
+    | '/api/daytona/status'
+    | '/api/public/keyp/search'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/docs' | '/api/public/keyp/search'
-  id: '__root__' | '/' | '/docs' | '/api/public/keyp/search'
+  to:
+    | '/'
+    | '/docs'
+    | '/api/daytona/run-opportunity'
+    | '/api/daytona/status'
+    | '/api/public/keyp/search'
+  id:
+    | '__root__'
+    | '/'
+    | '/docs'
+    | '/api/daytona/run-opportunity'
+    | '/api/daytona/status'
+    | '/api/public/keyp/search'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
+  ApiDaytonaRunOpportunityRoute: typeof ApiDaytonaRunOpportunityRoute
+  ApiDaytonaStatusRoute: typeof ApiDaytonaStatusRoute
   ApiPublicKeypSearchRoute: typeof ApiPublicKeypSearchRoute
 }
 
@@ -75,6 +112,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/daytona/status': {
+      id: '/api/daytona/status'
+      path: '/api/daytona/status'
+      fullPath: '/api/daytona/status'
+      preLoaderRoute: typeof ApiDaytonaStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/daytona/run-opportunity': {
+      id: '/api/daytona/run-opportunity'
+      path: '/api/daytona/run-opportunity'
+      fullPath: '/api/daytona/run-opportunity'
+      preLoaderRoute: typeof ApiDaytonaRunOpportunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/keyp/search': {
       id: '/api/public/keyp/search'
       path: '/api/public/keyp/search'
@@ -88,6 +139,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
+  ApiDaytonaRunOpportunityRoute: ApiDaytonaRunOpportunityRoute,
+  ApiDaytonaStatusRoute: ApiDaytonaStatusRoute,
   ApiPublicKeypSearchRoute: ApiPublicKeypSearchRoute,
 }
 export const routeTree = rootRouteImport

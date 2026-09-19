@@ -1,122 +1,210 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Bell, Home, Plus, Search, Sparkles, User, X, ExternalLink, ShieldCheck, Trash2 } from "lucide-react";
-import { keypClient } from "@/lib/keyp/client";
-import type { KeypFeedItem, SnsPlatform } from "@/lib/keyp/types";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  loadFeed,
-  loadInterests,
-  prependFeed,
-  saveInterests,
-  type Interest,
-} from "@/lib/keyp/storage";
+  Activity,
+  ArrowRight,
+  Bell,
+  Box,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  FileText,
+  FlaskConical,
+  Layers,
+  Loader2,
+  Play,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Terminal,
+  X,
+} from "lucide-react";
+import { keypClient } from "@/lib/keyp/client";
+import {
+  RUN_STEP_LABELS,
+  SAMPLE_COMPANY_PROFILE,
+  type Opportunity,
+  type RunResult,
+  type RunResultOk,
+  type RunStep,
+} from "@/lib/daytona/types";
+import {
+  clearRuns,
+  loadOpportunities,
+  loadRuns,
+  resetDemoData,
+  saveOpportunities,
+  saveRun,
+} from "@/lib/daytona/storage";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KeyP — 실시간 관심사 알림" },
+      { title: "KeyP × Daytona — Opportunity Agent" },
       {
         name: "description",
         content:
-          "관심사를 등록하면 AI 에이전트 팀이 SNS를 탐색·검증·요약해 실시간으로 알려주는 KeyP.",
+          "KeyP doesn't just find opportunities. It executes the work required to pursue them. 관심사에서 실행까지 — Daytona 샌드박스에서 지원 패키지를 자동 생성합니다.",
       },
-      { property: "og:title", content: "KeyP — 실시간 관심사 알림" },
+      { property: "og:title", content: "KeyP × Daytona — Opportunity Agent" },
       {
         property: "og:description",
-        content: "AI가 유튜브·인스타·링크드인 등 모든 SNS를 대신 탐색·검증합니다.",
+        content: "From Interest to Action. AI 에이전트가 기회를 찾고, Daytona 샌드박스에서 지원 서류까지 만듭니다.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: KeypApp,
+  component: KeypDaytonaApp,
 });
 
-type Tab = "home" | "add" | "feed" | "match";
+type Tab = "dashboard" | "opportunities" | "runs" | "results";
 
-function KeypApp() {
-  const [tab, setTab] = useState<Tab>("home");
-  const [interests, setInterests] = useState<Interest[]>([]);
-  const [feed, setFeed] = useState<KeypFeedItem[]>([]);
+function KeypDaytonaApp() {
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [hydrated, setHydrated] = useState(false);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [runs, setRuns] = useState<RunResultOk[]>([]);
+  const [selected, setSelected] = useState<Opportunity | null>(null);
+  const [detail, setDetail] = useState<RunResultOk | null>(null);
+
+  const status = useQuery({
+    queryKey: ["daytona-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/daytona/status");
+      return (await res.json()) as { configured: boolean };
+    },
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
-    setInterests(loadInterests());
-    setFeed(loadFeed());
+    setOpportunities(loadOpportunities());
+    setRuns(loadRuns());
     setHydrated(true);
   }, []);
 
-  function updateInterests(next: Interest[]) {
-    setInterests(next);
-    saveInterests(next);
+  function updateOpportunities(next: Opportunity[]) {
+    setOpportunities(next);
+    saveOpportunities(next);
   }
 
-  function onFeedChange(items: KeypFeedItem[]) {
-    const merged = prependFeed(items);
-    setFeed(merged);
+  function onRunComplete(run: RunResultOk) {
+    setRuns(saveRun(run));
+  }
+
+  function onResetDemo() {
+    const { opportunities: o, runs: r } = resetDemoData();
+    setOpportunities(o);
+    setRuns(r);
+    setSelected(null);
+    setDetail(null);
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-[440px] flex-col bg-white shadow-2xl">
-        <TopBar tab={tab} />
-        <main className="flex-1 overflow-y-auto pb-24">
-          {!hydrated ? null : tab === "home" ? (
-            <HomeTab
-              interests={interests}
-              onChange={updateInterests}
-              feedCount={feed.length}
-              onAdd={() => setTab("add")}
+    <div className="min-h-screen bg-slate-950/[0.03] bg-gradient-to-b from-slate-50 via-white to-slate-100">
+      <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col bg-white shadow-2xl md:max-w-[720px]">
+        <TopBar tab={tab} configured={status.data?.configured ?? false} />
+        <main className="flex-1 overflow-y-auto pb-28">
+          {!hydrated ? null : tab === "dashboard" ? (
+            <DashboardTab
+              opportunities={opportunities}
+              runs={runs}
+              configured={status.data?.configured ?? false}
+              statusLoading={status.isLoading}
+              onFind={() => setTab("opportunities")}
+              onResetDemo={onResetDemo}
             />
-          ) : tab === "add" ? (
-            <AddTab
-              onDone={(newInterest, items) => {
-                updateInterests([newInterest, ...interests]);
-                onFeedChange(items);
-                setTab("feed");
+          ) : tab === "opportunities" ? (
+            <OpportunitiesTab
+              opportunities={opportunities}
+              onChange={updateOpportunities}
+              onSelect={(o) => {
+                setSelected(o);
+                setTab("runs");
               }}
             />
-          ) : tab === "feed" ? (
-            <FeedTab feed={feed} onClear={() => { setFeed([]); localStorage.removeItem("keyp.feed"); }} />
+          ) : tab === "runs" ? (
+            <AgentRunsTab
+              opportunity={selected}
+              configured={status.data?.configured ?? false}
+              onComplete={onRunComplete}
+              onGoOpportunities={() => setTab("opportunities")}
+              onGoResults={() => setTab("results")}
+            />
           ) : (
-            <MatchTab interests={interests} />
+            <ResultsTab
+              runs={runs}
+              onOpen={setDetail}
+              onClear={() => {
+                clearRuns();
+                setRuns([]);
+              }}
+            />
           )}
         </main>
         <BottomNav tab={tab} setTab={setTab} />
       </div>
+      {detail && <ResultDetailSheet run={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }
 
-function TopBar({ tab }: { tab: Tab }) {
-  const titles: Record<Tab, string> = {
-    home: "내 관심사",
-    add: "관심사 추가",
-    feed: "속보 피드",
-    match: "상호매칭",
-  };
+/* ─────────── Chrome ─────────── */
+
+const TAB_TITLES: Record<Tab, { ko: string; en: string }> = {
+  dashboard: { ko: "대시보드", en: "Dashboard" },
+  opportunities: { ko: "기회 탐색", en: "Opportunities" },
+  runs: { ko: "에이전트 실행", en: "Agent Runs" },
+  results: { ko: "결과", en: "Results" },
+};
+
+function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/90 px-5 py-4 backdrop-blur">
-      <div className="flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-sm font-black text-white">K</div>
+      <div className="flex items-center gap-2.5">
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-black text-white shadow-lg shadow-indigo-600/25">
+          K
+        </div>
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-indigo-600">KeyP</div>
-          <div className="text-base font-bold text-slate-900">{titles[tab]}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-600">
+            KeyP × Daytona
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base font-bold text-slate-900">{TAB_TITLES[tab].ko}</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              {TAB_TITLES[tab].en}
+            </span>
+          </div>
         </div>
       </div>
-      <Bell className="h-5 w-5 text-slate-400" />
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            configured ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${configured ? "bg-emerald-500" : "bg-amber-500"}`} />
+          {configured ? "Daytona" : "연결 필요"}
+        </span>
+        <Bell className="h-5 w-5 text-slate-300" />
+      </div>
     </header>
   );
 }
 
 function BottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
-  const items: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-    { id: "home", label: "홈", icon: <Home className="h-5 w-5" /> },
-    { id: "add", label: "추가", icon: <Plus className="h-5 w-5" /> },
-    { id: "feed", label: "피드", icon: <Sparkles className="h-5 w-5" /> },
-    { id: "match", label: "매칭", icon: <User className="h-5 w-5" /> },
+  const items: Array<{ id: Tab; icon: React.ReactNode }> = [
+    { id: "dashboard", icon: <Layers className="h-5 w-5" /> },
+    { id: "opportunities", icon: <Target className="h-5 w-5" /> },
+    { id: "runs", icon: <Terminal className="h-5 w-5" /> },
+    { id: "results", icon: <FileText className="h-5 w-5" /> },
   ];
   return (
-    <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-[440px] -translate-x-1/2 border-t border-slate-100 bg-white/95 backdrop-blur">
+    <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-[520px] -translate-x-1/2 border-t border-slate-100 bg-white/95 backdrop-blur md:max-w-[720px]">
       <ul className="grid grid-cols-4">
         {items.map((it) => {
           const active = tab === it.id;
@@ -124,12 +212,15 @@ function BottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
             <li key={it.id}>
               <button
                 onClick={() => setTab(it.id)}
-                className={`flex w-full flex-col items-center gap-1 py-3 text-[11px] transition ${
+                className={`flex w-full flex-col items-center gap-1 py-3 transition ${
                   active ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
                 }`}
               >
                 {it.icon}
-                <span className="font-medium">{it.label}</span>
+                <span className="text-[11px] font-semibold">{TAB_TITLES[it.id].ko}</span>
+                <span className="text-[9px] uppercase tracking-wider opacity-70">
+                  {TAB_TITLES[it.id].en}
+                </span>
               </button>
             </li>
           );
@@ -139,331 +230,672 @@ function BottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   );
 }
 
-/* ─────────── Home ─────────── */
-function HomeTab({
-  interests,
-  onChange,
-  feedCount,
-  onAdd,
+/* ─────────── 1. Dashboard ─────────── */
+
+function DashboardTab({
+  opportunities,
+  runs,
+  configured,
+  statusLoading,
+  onFind,
+  onResetDemo,
 }: {
-  interests: Interest[];
-  onChange: (l: Interest[]) => void;
-  feedCount: number;
-  onAdd: () => void;
+  opportunities: Opportunity[];
+  runs: RunResultOk[];
+  configured: boolean;
+  statusLoading: boolean;
+  onFind: () => void;
+  onResetDemo: () => void;
 }) {
+  const readyToApply = runs.filter((r) => r.eligible !== "no").length;
+  const avgMatch =
+    opportunities.length === 0
+      ? 0
+      : Math.round(opportunities.reduce((a, b) => a + (b.matchScore || 0), 0) / opportunities.length);
+
   return (
     <div className="p-5">
-      <div className="mb-5 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white">
-        <div className="text-xs opacity-80">등록된 관심사</div>
-        <div className="mt-1 text-3xl font-bold">{interests.length}개</div>
-        <div className="mt-3 flex items-center gap-2 text-xs opacity-90">
-          <Sparkles className="h-4 w-4" />
-          누적 알림 {feedCount}건
+      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-700 p-6 text-white shadow-xl shadow-indigo-600/20">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
+          KeyP × Daytona
         </div>
+        <h1 className="mt-2 text-2xl font-bold leading-snug">From Interest to Action.</h1>
+        <p className="mt-2 text-sm leading-relaxed text-white/85">
+          KeyP는 기회를 찾는 데서 멈추지 않습니다. 그 기회를 잡기 위해 필요한 일까지 직접 실행합니다.
+        </p>
+        <button
+          onClick={onFind}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-indigo-700 shadow-lg transition hover:bg-indigo-50"
+        >
+          <Search className="h-4 w-4" />
+          기회 찾기
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </section>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <StatCard label="Opportunities Found" ko="발견한 기회" value={opportunities.length} icon={<Target className="h-4 w-4" />} />
+        <StatCard label="Ready to Apply" ko="지원 가능" value={readyToApply} icon={<CheckCircle2 className="h-4 w-4" />} />
+        <StatCard label="Agent Runs" ko="에이전트 실행" value={runs.length} icon={<Terminal className="h-4 w-4" />} />
+        <StatCard label="Avg. Match" ko="평균 적합도" value={`${avgMatch}%`} icon={<Activity className="h-4 w-4" />} />
       </div>
 
-      {interests.length === 0 ? (
-        <EmptyState onAdd={onAdd} />
-      ) : (
+      <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <ShieldCheck className="h-4 w-4" />
+          System Status
+        </div>
         <ul className="space-y-2">
-          {interests.map((it) => (
-            <li
-              key={it.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
-            >
-              <div className="grid h-10 w-10 place-items-center rounded-lg bg-indigo-50 text-indigo-600">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-slate-900">{it.label}</div>
-                <div className="text-xs text-slate-400">실시간 알림</div>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={it.enabled}
-                  onChange={(e) =>
-                    onChange(interests.map((x) => (x.id === it.id ? { ...x, enabled: e.target.checked } : x)))
-                  }
-                  className="peer sr-only"
-                />
-                <div className="h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600" />
-                <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5" />
-              </label>
-              <button
-                onClick={() => onChange(interests.filter((x) => x.id !== it.id))}
-                className="text-slate-300 hover:text-red-500"
-                aria-label="삭제"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
+          <SystemRow name="KeyP Planner" state="ok" note="온라인" />
+          <SystemRow name="Verifier" state="ok" note="온라인" />
+          <SystemRow
+            name="Daytona Sandbox"
+            state={statusLoading ? "loading" : configured ? "ok" : "warn"}
+            note={statusLoading ? "확인 중…" : configured ? "Connected" : "Not connected · 연결 필요"}
+          />
         </ul>
-      )}
+        {!configured && !statusLoading && (
+          <p className="mt-3 rounded-lg bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-800">
+            DAYTONA_API_KEY가 설정되지 않아 실제 샌드박스 실행은 비활성 상태입니다. 발표용으로는 DEMO 버튼으로
+            시뮬레이션 실행을 볼 수 있으며, 시뮬레이션은 항상 <b>DEMO RUN</b>으로 표시됩니다.
+          </p>
+        )}
+      </section>
 
       <button
-        onClick={onAdd}
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700"
+        onClick={onResetDemo}
+        className="mx-auto mt-6 flex items-center gap-1.5 text-[11px] font-medium text-slate-400 transition hover:text-indigo-600"
       >
-        <Plus className="h-4 w-4" />
-        관심사 추가
+        <RotateCcw className="h-3 w-3" />
+        데모 데이터 초기화
       </button>
     </div>
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
-      <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-indigo-50 text-indigo-600">
-        <Sparkles className="h-6 w-6" />
-      </div>
-      <div className="text-sm font-semibold text-slate-900">아직 관심사가 없어요</div>
-      <div className="mt-1 text-xs text-slate-500">궁금한 걸 한 문장으로 입력해보세요.</div>
-      <button
-        onClick={onAdd}
-        className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
-      >
-        첫 관심사 만들기
-      </button>
-    </div>
-  );
-}
-
-/* ─────────── Add ─────────── */
-function AddTab({
-  onDone,
+function StatCard({
+  label,
+  ko,
+  value,
+  icon,
 }: {
-  onDone: (i: Interest, items: KeypFeedItem[]) => void;
+  label: string;
+  ko: string;
+  value: number | string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-1.5 text-indigo-600">{icon}</div>
+      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
+      <div className="text-[11px] font-semibold text-slate-600">{ko}</div>
+      <div className="text-[9px] uppercase tracking-wider text-slate-400">{label}</div>
+    </div>
+  );
+}
+
+function SystemRow({ name, state, note }: { name: string; state: "ok" | "warn" | "loading"; note: string }) {
+  const dot =
+    state === "ok" ? "bg-emerald-500" : state === "warn" ? "bg-amber-500" : "bg-slate-300 animate-pulse";
+  const text = state === "ok" ? "text-emerald-700" : state === "warn" ? "text-amber-700" : "text-slate-400";
+  return (
+    <li className="flex items-center justify-between rounded-xl bg-white px-3 py-2 shadow-sm">
+      <span className="text-xs font-semibold text-slate-800">{name}</span>
+      <span className={`flex items-center gap-1.5 text-[11px] font-medium ${text}`}>
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        {note}
+      </span>
+    </li>
+  );
+}
+
+/* ─────────── 2. Opportunities ─────────── */
+
+function OpportunitiesTab({
+  opportunities,
+  onChange,
+  onSelect,
+}: {
+  opportunities: Opportunity[];
+  onChange: (l: Opportunity[]) => void;
+  onSelect: (o: Opportunity) => void;
 }) {
   const [text, setText] = useState("");
-  const suggestions = ["도쿄 맛집 추천", "AI 스타트업 투자 기회", "BTS 월드투어 일정", "해외 축구 이적시장", "서울 신규 카페"];
+  const examples = [
+    "서울 소재 AI 스타트업이 지원할 수 있는 정부지원사업, 공모전, 해커톤 찾아줘",
+    "AI 교육 콘텐츠 기업 대상 글로벌 그랜트",
+  ];
 
-  const mutation = useMutation({
+  const search = useMutation({
     mutationFn: async (interest: string) => {
       const res = await keypClient.search({ interest, limit: 5 });
-      if (!("ok" in res) || !res.ok) throw new Error(("error" in res && res.error) || "실패");
+      if (!("ok" in res) || !res.ok) throw new Error(("error" in res && res.error) || "검색 실패");
       return res;
     },
     onSuccess: (res) => {
-      const newInterest: Interest = {
-        id: `${Date.now()}`,
-        label: res.interest,
-        enabled: true,
-        createdAt: new Date().toISOString(),
-      };
-      onDone(newInterest, res.items);
+      const found: Opportunity[] = res.items.map((it, i) => ({
+        id: it.id,
+        title: it.headline,
+        category: it.keywords[0] ?? "기회",
+        deadline: "공고 확인 필요",
+        organizer: it.sources[0]?.author || it.sources[0]?.title || "출처 확인",
+        location: "확인 필요",
+        matchScore: Math.max(50, Math.min(97, it.credibility - i)),
+        why: it.summary,
+        url: it.sources[0]?.url ?? "",
+      }));
+      const ids = new Set(opportunities.map((o) => o.id));
+      onChange([...found.filter((f) => !ids.has(f.id)), ...opportunities]);
     },
   });
 
   return (
     <div className="p-5">
-      <label className="text-xs font-semibold text-slate-500">어떤 관심사를 등록할까요?</label>
+      <label className="text-xs font-semibold text-slate-500">
+        어떤 기회를 찾을까요? <span className="text-slate-400">(자연어로 입력)</span>
+      </label>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        placeholder="예: 도쿄 맛집 추천, 뉴욕 여행, AI 스타트업 투자 기회, BTS 월드투어 일정…"
+        placeholder="예: 서울 소재 AI 스타트업이 지원할 수 있는 정부지원사업, 공모전, 해커톤 찾아줘"
         className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white"
       />
-
-      <div className="mt-3">
-        <div className="text-xs font-semibold text-slate-500">예시 키워드</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              onClick={() => setText(s)}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 hover:border-indigo-400 hover:text-indigo-600"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {examples.map((e) => (
+          <button
+            key={e}
+            onClick={() => setText(e)}
+            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600 hover:border-indigo-400 hover:text-indigo-600"
+          >
+            {e.slice(0, 26)}…
+          </button>
+        ))}
       </div>
-
       <button
-        onClick={() => mutation.mutate(text.trim())}
-        disabled={!text.trim() || mutation.isPending}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
+        onClick={() => search.mutate(text.trim())}
+        disabled={!text.trim() || search.isPending}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
       >
-        {mutation.isPending ? (
+        {search.isPending ? (
           <>
-            <Search className="h-4 w-4 animate-pulse" />
-            AI 에이전트 팀 작업 중…
+            <Loader2 className="h-4 w-4 animate-spin" />
+            KeyP Planner 탐색 중…
           </>
         ) : (
           <>
             <Sparkles className="h-4 w-4" />
-            AI 분석 시작
+            기회 탐색 시작
           </>
         )}
       </button>
-
-      {mutation.isError && (
+      {search.isError && (
         <div className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-700">
-          {(mutation.error as Error).message}
+          {(search.error as Error).message}
         </div>
       )}
 
-      <p className="mt-4 text-center text-[11px] text-slate-400">
-        AI가 의도를 분석하고 최적의 검색 전략을 설계합니다.
-      </p>
+      <div className="mt-6 space-y-3">
+        <div className="text-xs font-semibold text-slate-500">기회 {opportunities.length}건</div>
+        {opportunities.map((o) => (
+          <OpportunityCard key={o.id} o={o} onRun={() => onSelect(o)} />
+        ))}
+      </div>
     </div>
   );
 }
 
-/* ─────────── Feed ─────────── */
-const platformStyle: Record<SnsPlatform, { bg: string; text: string; label: string }> = {
-  youtube: { bg: "bg-red-50", text: "text-red-600", label: "YouTube" },
-  instagram: { bg: "bg-pink-50", text: "text-pink-600", label: "Instagram" },
-  facebook: { bg: "bg-blue-50", text: "text-blue-600", label: "Facebook" },
-  linkedin: { bg: "bg-sky-50", text: "text-sky-700", label: "LinkedIn" },
-  x: { bg: "bg-slate-100", text: "text-slate-900", label: "X" },
-  tiktok: { bg: "bg-slate-100", text: "text-slate-900", label: "TikTok" },
-  reddit: { bg: "bg-orange-50", text: "text-orange-600", label: "Reddit" },
-  news: { bg: "bg-emerald-50", text: "text-emerald-700", label: "뉴스" },
-  blog: { bg: "bg-amber-50", text: "text-amber-700", label: "블로그" },
-  community: { bg: "bg-violet-50", text: "text-violet-700", label: "커뮤니티" },
-  other: { bg: "bg-slate-100", text: "text-slate-600", label: "기타" },
-};
+function OpportunityCard({ o, onRun }: { o: Opportunity; onRun: () => void }) {
+  return (
+    <article className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+          {o.category}
+        </span>
+        {o.sample && (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+            SAMPLE DATA
+          </span>
+        )}
+        <span className="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+          Match {o.matchScore}%
+        </span>
+      </div>
+      <h3 className="text-sm font-bold leading-snug text-slate-900">{o.title}</h3>
+      <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{o.why}</p>
+      <dl className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
+        <Meta label="주최" value={o.organizer} />
+        <Meta label="마감" value={o.deadline} />
+        <Meta label="지역" value={o.location} />
+      </dl>
+      <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+        {o.url && (
+          <a
+            href={o.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            공식 출처
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+        <button
+          onClick={onRun}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-2 text-[11px] font-bold text-white transition hover:bg-slate-800"
+        >
+          <Play className="h-3 w-3" />
+          Run Opportunity Agent
+        </button>
+      </div>
+    </article>
+  );
+}
 
-function FeedTab({ feed, onClear }: { feed: KeypFeedItem[]; onClear: () => void }) {
-  if (feed.length === 0) {
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[9px] uppercase tracking-wider text-slate-400">{label}</dt>
+      <dd className="truncate font-medium text-slate-700">{value || "—"}</dd>
+    </div>
+  );
+}
+
+/* ─────────── 3. Agent Runs ─────────── */
+
+function AgentRunsTab({
+  opportunity,
+  configured,
+  onComplete,
+  onGoOpportunities,
+  onGoResults,
+}: {
+  opportunity: Opportunity | null;
+  configured: boolean;
+  onComplete: (r: RunResultOk) => void;
+  onGoOpportunities: () => void;
+  onGoResults: () => void;
+}) {
+  const [steps, setSteps] = useState<RunStep[]>([]);
+  const [result, setResult] = useState<RunResultOk | null>(null);
+  const [error, setError] = useState<{ code: string; message: string; log?: string[] } | null>(null);
+  const [liveLog, setLiveLog] = useState<string[]>([]);
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => () => timers.current.forEach((t) => clearTimeout(t)), []);
+
+  const run = useMutation({
+    mutationFn: async (demoMode: boolean) => {
+      if (!opportunity) throw new Error("기회를 먼저 선택하세요.");
+      setResult(null);
+      setError(null);
+      setLiveLog([demoMode ? "$ keyp agent run --demo" : "$ keyp agent run --daytona"]);
+      setSteps(RUN_STEP_LABELS.map((s) => ({ key: s.key, label: s.label, status: "pending" })));
+      // progressive UI feedback while the server call is in flight
+      timers.current.forEach((t) => clearTimeout(t));
+      timers.current = RUN_STEP_LABELS.map((s, i) =>
+        window.setTimeout(() => {
+          setSteps((prev) => prev.map((p) => (p.key === s.key ? { ...p, status: "running" } : p)));
+        }, 350 * i),
+      );
+
+      const res = await fetch("/api/daytona/run-opportunity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          opportunity,
+          companyProfile: SAMPLE_COMPANY_PROFILE,
+          demoMode: demoMode || undefined,
+        }),
+      });
+      return (await res.json()) as RunResult;
+    },
+    onSuccess: (res) => {
+      timers.current.forEach((t) => clearTimeout(t));
+      if (res.ok) {
+        setSteps(res.steps);
+        setLiveLog((l) => [...l, ...res.log]);
+        setResult(res);
+        onComplete(res);
+      } else {
+        setSteps(res.steps ?? []);
+        setLiveLog((l) => [...l, ...(res.log ?? []), `! ${res.error}`]);
+        setError({ code: res.code, message: res.error, log: res.log });
+      }
+    },
+    onError: (e) => {
+      timers.current.forEach((t) => clearTimeout(t));
+      setError({ code: "network", message: (e as Error).message });
+    },
+  });
+
+  if (!opportunity) {
+    return (
+      <div className="p-8 text-center">
+        <Box className="mx-auto h-10 w-10 text-slate-300" />
+        <p className="mt-3 text-sm text-slate-500">실행할 기회를 먼저 선택해주세요.</p>
+        <button
+          onClick={onGoOpportunities}
+          className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white"
+        >
+          기회 탐색으로 이동
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-white">
+            <Box className="h-3 w-3" />
+            Daytona Sandbox
+          </span>
+          {opportunity.sample && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">
+              SAMPLE DATA
+            </span>
+          )}
+        </div>
+        <h2 className="text-sm font-bold leading-snug text-slate-900">{opportunity.title}</h2>
+        <p className="mt-1 text-[11px] text-slate-500">
+          {opportunity.organizer} · {opportunity.deadline}
+        </p>
+      </div>
+
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={() => run.mutate(false)}
+          disabled={run.isPending}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+        >
+          {run.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+          REAL RUN
+        </button>
+        <button
+          onClick={() => run.mutate(true)}
+          disabled={run.isPending}
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <FlaskConical className="h-4 w-4" />
+          DEMO
+        </button>
+      </div>
+      {!configured && (
+        <p className="mt-2 text-[10px] leading-relaxed text-amber-700">
+          Daytona 미연결 상태 — REAL RUN은 실패하고 명확한 안내를 반환합니다. DEMO는 시뮬레이션으로만 표시됩니다.
+        </p>
+      )}
+
+      {/* execution console */}
+      {(run.isPending || steps.length > 0 || liveLog.length > 0) && (
+        <section className="mt-4 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              <Terminal className="h-3.5 w-3.5" />
+              Execution
+            </div>
+            {result && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[9px] font-black tracking-wider ${
+                  result.mode === "real" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+                }`}
+              >
+                {result.mode === "real" ? "REAL RUN" : "DEMO RUN"}
+              </span>
+            )}
+          </div>
+
+          <ol className="space-y-0 px-4 py-3">
+            {(steps.length
+              ? steps
+              : RUN_STEP_LABELS.map<RunStep>((s) => ({ key: s.key, label: s.label, status: "pending" }))
+            ).map(
+              (s, i) => {
+                const ko = RUN_STEP_LABELS.find((x) => x.key === s.key)?.ko ?? "";
+                return (
+                  <li key={s.key} className="flex gap-3 pb-3 last:pb-0">
+                    <div className="flex flex-col items-center">
+                      <span
+                        className={`grid h-5 w-5 place-items-center rounded-full text-[9px] font-bold ${
+                          s.status === "done"
+                            ? "bg-emerald-500 text-slate-950"
+                            : s.status === "running"
+                              ? "bg-indigo-500 text-white"
+                              : s.status === "failed"
+                                ? "bg-red-500 text-white"
+                                : "bg-slate-800 text-slate-500"
+                        }`}
+                      >
+                        {s.status === "done" ? "✓" : s.status === "running" ? "•" : s.status === "failed" ? "!" : i + 1}
+                      </span>
+                      {i < RUN_STEP_LABELS.length - 1 && <span className="mt-1 h-full w-px flex-1 bg-slate-800" />}
+                    </div>
+                    <div className="min-w-0 flex-1 pb-1">
+                      <div
+                        className={`text-xs font-semibold ${
+                          s.status === "pending" ? "text-slate-500" : "text-slate-100"
+                        }`}
+                      >
+                        {ko}
+                        <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-500">{s.label}</span>
+                      </div>
+                      {s.detail && (
+                        <div className="mt-0.5 truncate font-mono text-[10px] text-indigo-300">{s.detail}</div>
+                      )}
+                    </div>
+                  </li>
+                );
+              },
+            )}
+          </ol>
+
+          {liveLog.length > 0 && (
+            <pre className="max-h-48 overflow-y-auto border-t border-slate-800 bg-black/40 px-4 py-3 font-mono text-[10px] leading-relaxed text-emerald-300">
+              {liveLog.join("\n")}
+            </pre>
+          )}
+        </section>
+      )}
+
+      {error && (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="text-xs font-bold text-amber-900">
+            {error.code === "not_configured" ? "Daytona 연결 필요" : "실행 실패"}
+          </div>
+          <p className="mt-1 font-mono text-[10px] leading-relaxed text-amber-800">{error.message}</p>
+          {error.code === "not_configured" && (
+            <p className="mt-2 text-[11px] text-amber-800">
+              Project Settings → Secrets 에 <b>DAYTONA_API_KEY</b>를 추가하면 실제 샌드박스 실행이 활성화됩니다.
+              지금은 DEMO 버튼으로 시뮬레이션을 볼 수 있습니다.
+            </p>
+          )}
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-3 space-y-3">
+          <RunSummary run={result} />
+          <button
+            onClick={onGoResults}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          >
+            결과 보기
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function eligibleStyle(e: RunResultOk["eligible"]) {
+  return e === "yes"
+    ? { bg: "bg-emerald-50", text: "text-emerald-700", label: "Eligible: YES" }
+    : e === "review"
+      ? { bg: "bg-amber-50", text: "text-amber-700", label: "Eligible: REVIEW" }
+      : { bg: "bg-red-50", text: "text-red-700", label: "Eligible: NO" };
+}
+
+function RunSummary({ run }: { run: RunResultOk }) {
+  const el = eligibleStyle(run.eligible);
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-3xl font-black text-slate-900">{run.matchScore}%</span>
+        <span className="text-[11px] font-semibold text-slate-500">Match Score</span>
+        <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${el.bg} ${el.text}`}>
+          {el.label}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+        <span
+          className={`rounded px-1.5 py-0.5 font-bold ${
+            run.mode === "real" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+          }`}
+        >
+          {run.mode === "real" ? "REAL RUN" : "DEMO RUN"}
+        </span>
+        {run.sandboxId && <span className="font-mono">sandbox {run.sandboxId.slice(0, 12)}</span>}
+        <span className="flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {(run.elapsedMs / 1000).toFixed(1)}s
+        </span>
+      </div>
+
+      {run.reasons.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {run.reasons.map((r) => (
+            <li key={r} className="font-mono text-[10px] text-slate-600">
+              {r}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {run.missingDocuments.length > 0 && (
+        <div className="mt-3 rounded-xl bg-slate-50 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Missing documents</div>
+          <ul className="mt-1.5 space-y-1">
+            {run.missingDocuments.map((m) => (
+              <li key={m} className="text-[11px] text-slate-700">
+                ☐ {m}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-3 space-y-1.5">
+        {run.files.map((f) => (
+          <FileRow key={f.name} name={f.name} content={f.content} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FileRow({ name, content }: { name: string; content: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-slate-100">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        <FileText className="h-3.5 w-3.5 text-indigo-500" />
+        <span className="flex-1 truncate font-mono">/output/{name}</span>
+        <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <pre className="max-h-56 overflow-auto border-t border-slate-100 bg-slate-950 px-3 py-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-slate-200">
+          {content}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/* ─────────── 4. Results ─────────── */
+
+function ResultsTab({
+  runs,
+  onOpen,
+  onClear,
+}: {
+  runs: RunResultOk[];
+  onOpen: (r: RunResultOk) => void;
+  onClear: () => void;
+}) {
+  if (runs.length === 0) {
     return (
       <div className="p-8 text-center text-sm text-slate-500">
-        아직 알림이 없어요. 관심사를 추가하면 여기에 실시간 피드가 쌓입니다.
+        아직 실행 결과가 없어요. 기회를 선택해 Opportunity Agent를 실행해보세요.
       </div>
     );
   }
   return (
     <div className="space-y-3 p-5">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold text-slate-500">최근 알림 {feed.length}건</div>
-        <button onClick={onClear} className="text-[11px] text-slate-400 hover:text-red-500">전체 삭제</button>
+        <div className="text-xs font-semibold text-slate-500">실행 기록 {runs.length}건</div>
+        <button onClick={onClear} className="text-[11px] text-slate-400 hover:text-red-500">
+          전체 삭제
+        </button>
       </div>
-      {feed.map((it) => (
-        <FeedCard key={it.id} item={it} />
-      ))}
+      {runs.map((r) => {
+        const el = eligibleStyle(r.eligible);
+        return (
+          <button
+            key={`${r.startedAt}-${r.opportunity.id}`}
+            onClick={() => onOpen(r)}
+            className="w-full rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:border-indigo-200"
+          >
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
+                  r.mode === "real" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                {r.mode === "real" ? "REAL RUN" : "DEMO RUN"}
+              </span>
+              <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${el.bg} ${el.text}`}>{el.label}</span>
+              <span className="ml-auto text-sm font-black text-slate-900">{r.matchScore}%</span>
+            </div>
+            <div className="mt-2 text-xs font-bold leading-snug text-slate-900">{r.opportunity.title}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+              <span>{new Date(r.finishedAt).toLocaleString("ko-KR")}</span>
+              {r.sandboxId && <span className="font-mono">sandbox {r.sandboxId.slice(0, 12)}</span>}
+              <span>{r.files.length} files</span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function FeedCard({ item }: { item: KeypFeedItem }) {
-  const credColor =
-    item.credibility >= 85
-      ? "text-emerald-600 bg-emerald-50"
-      : item.credibility >= 65
-        ? "text-amber-700 bg-amber-50"
-        : "text-red-600 bg-red-50";
+function ResultDetailSheet({ run, onClose }: { run: RunResultOk; onClose: () => void }) {
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <div className="mb-2 flex items-center gap-2">
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${credColor}`}>
-          <ShieldCheck className="h-3 w-3" />
-          신뢰도 {item.credibility}%
-        </span>
-        <span className="text-[10px] text-slate-400">#{item.interest}</span>
-      </div>
-      <h3 className="text-sm font-bold leading-snug text-slate-900">{item.headline}</h3>
-      <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{item.summary}</p>
-
-      {item.keywords.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {item.keywords.slice(0, 5).map((k) => (
-            <span key={k} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
-              {k}
-            </span>
-          ))}
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-950/50 backdrop-blur-sm">
+      <div className="max-h-[88vh] w-full max-w-[520px] overflow-y-auto rounded-t-3xl bg-white p-5 md:max-w-[720px]">
+        <div className="mb-3 flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Run detail</div>
+            <h3 className="text-sm font-bold leading-snug text-slate-900">{run.opportunity.title}</h3>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      )}
-
-      <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
-        {item.sources.map((s, i) => {
-          const style = platformStyle[s.platform] ?? platformStyle.other;
-          return (
-            <a
-              key={i}
-              href={s.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 rounded-lg p-1.5 text-[11px] transition hover:bg-slate-50"
-            >
-              <span className={`rounded px-1.5 py-0.5 font-semibold ${style.bg} ${style.text}`}>
-                {style.label}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-slate-600">{s.title}</span>
-              <ExternalLink className="h-3 w-3 shrink-0 text-slate-400" />
-            </a>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-/* ─────────── Match ─────────── */
-function MatchTab({ interests }: { interests: Interest[] }) {
-  const matches = useMemo(() => {
-    if (interests.length === 0) return [];
-    const seed = interests.map((i) => i.label).join(",").length;
-    const names = ["Jane.travel", "Min.dev", "Yuki.eats", "Alex.bts"];
-    const cities = ["서울 · 20대", "부산 · 30대", "도쿄 · 20대", "뉴욕 · 30대"];
-    return names.map((n, i) => ({
-      id: `${i}`,
-      name: n,
-      city: cities[i],
-      score: 70 + ((seed + i * 7) % 25),
-      shared: interests.slice(0, 3).map((x) => x.label),
-    }));
-  }, [interests]);
-
-  if (interests.length === 0) {
-    return (
-      <div className="p-8 text-center text-sm text-slate-500">
-        관심사를 등록하면 비슷한 관심사를 가진 사용자를 매칭해드려요.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 p-5">
-      <div className="text-xs font-semibold text-slate-500">비슷한 관심사를 가진 사용자</div>
-      {matches.map((m) => (
-        <div key={m.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-          <div className="mb-3 inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">
-            매칭 점수 {m.score}%
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 font-bold text-white">
-              {m.name[0]}
-            </div>
-            <div>
-              <div className="text-sm font-bold text-slate-900">{m.name}</div>
-              <div className="text-[11px] text-slate-500">{m.city}</div>
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-1">
-            {m.shared.map((s) => (
-              <span key={s} className="rounded bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
-                {s}
-              </span>
-            ))}
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button className="flex-1 rounded-lg bg-indigo-600 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
-              연결 요청
-            </button>
-            <button className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-              나중에
-            </button>
-          </div>
+        <RunSummary run={run} />
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+          <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Step log</div>
+          <pre className="max-h-56 overflow-y-auto border-t border-slate-800 px-4 py-3 font-mono text-[10px] leading-relaxed text-emerald-300">
+            {run.log.join("\n")}
+          </pre>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
-
-// silence unused import warning for X icon (kept for future close buttons)
-void X;
