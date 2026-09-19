@@ -7,4 +7,4 @@
 - [x] Preserve opportunity tools on a secondary route
 - [x] Add service worker notification foundation
 - [x] Add DESIGN_SYSTEM.md
-- [ ] Verify desktop/mobile, dedupe, baseline, notifications, typecheck/build
+- [x] Verify desktop/mobile, dedupe, baseline, notifications, typecheck/build
