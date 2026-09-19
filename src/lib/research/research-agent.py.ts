@@ -123,16 +123,23 @@ def run_lovable():
         "Request: %s\nCompany profile: %s\n\n%s"
         % (QUERY, PROMPT_PROFILE, SCHEMA_HINT)
     )
-    data = post_json(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
-        {
-            "model": LOVABLE_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "reasoning_effort": "low",
-        },
-        {"Lovable-API-Key": LOVABLE_KEY},
-        timeout=180,
-    )
+    def _call():
+        return post_json(
+            "https://ai.gateway.lovable.dev/v1/chat/completions",
+            {
+                "model": LOVABLE_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "reasoning_effort": "low",
+            },
+            {"Lovable-API-Key": LOVABLE_KEY},
+            timeout=180,
+        )
+
+    try:
+        data = _call()
+    except Exception as e:
+        log("lovable: first attempt failed (%s) — retrying once" % str(e)[:80])
+        data = _call()
     choices = data.get("choices") or []
     text = ""
     if choices:
