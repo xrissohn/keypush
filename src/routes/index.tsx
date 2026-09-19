@@ -67,8 +67,12 @@ export const Route = createFileRoute("/")({
         content: "From Interest to Action. AI 에이전트가 기회를 찾고, Daytona 샌드박스에서 지원 서류까지 만듭니다.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://keyp.info/" },
+      { property: "og:image", content: "https://keyp.info/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://keyp.info/og-image.png" },
     ],
+    links: [{ rel: "canonical", href: "https://keyp.info/" }],
   }),
   component: KeypDaytonaApp,
 });
