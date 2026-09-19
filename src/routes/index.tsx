@@ -418,41 +418,59 @@ function SystemRow({ name, state, note }: { name: string; state: "ok" | "warn" |
 
 function OpportunitiesTab({
   opportunities,
+  engines,
   onChange,
+  onResearch,
   onSelect,
 }: {
   opportunities: Opportunity[];
+  engines?: ResearchEngineStatus;
   onChange: (l: Opportunity[]) => void;
+  onResearch: (r: { query: string; enginesUsed: ResearchEngine[] } | null) => void;
   onSelect: (o: Opportunity) => void;
 }) {
   const [text, setText] = useState("");
+  const [meta, setMeta] = useState<{
+    sandboxId: string;
+    enginesUsed: ResearchEngine[];
+    note?: string;
+    errors: Array<{ engine: string; message: string }>;
+    count: number;
+  } | null>(null);
   const examples = [
     "서울 소재 AI 스타트업이 지원할 수 있는 정부지원사업, 공모전, 해커톤 찾아줘",
     "AI 교육 콘텐츠 기업 대상 글로벌 그랜트",
   ];
 
   const search = useMutation({
-    mutationFn: async (interest: string) => {
-      const res = await keypClient.search({ interest, limit: 5 });
-      if (!("ok" in res) || !res.ok) throw new Error(("error" in res && res.error) || "검색 실패");
-      return res;
+    mutationFn: async (query: string) => {
+      setMeta(null);
+      const res = await fetch("/api/research/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, companyProfile: SAMPLE_COMPANY_PROFILE, maxResults: 8 }),
+      });
+      const json = (await res.json()) as ResearchResponse;
+      if (!json.ok) throw new Error(json.error);
+      return json;
     },
     onSuccess: (res) => {
-      const found: Opportunity[] = res.items.map((it, i) => ({
-        id: it.id,
-        title: it.headline,
-        category: it.keywords[0] ?? "기회",
-        deadline: "공고 확인 필요",
-        organizer: it.sources[0]?.author || it.sources[0]?.title || "출처 확인",
-        location: "확인 필요",
-        matchScore: Math.max(50, Math.min(97, it.credibility - i)),
-        why: it.summary,
-        url: it.sources[0]?.url ?? "",
-      }));
-      const ids = new Set(opportunities.map((o) => o.id));
-      onChange([...found.filter((f) => !ids.has(f.id)), ...opportunities]);
+      const found: Opportunity[] = res.results.map((r: ResearchResultItem) => ({ ...r }));
+      const ids = new Set(found.map((f) => f.id));
+      onChange([...found, ...opportunities.filter((o) => !ids.has(o.id))]);
+      onResearch({ query: res.query, enginesUsed: res.enginesUsed });
+      setMeta({
+        sandboxId: res.sandboxId,
+        enginesUsed: res.enginesUsed,
+        note: res.liveSearchNote,
+        errors: res.engineErrors,
+        count: res.results.length,
+      });
     },
   });
+
+  const live = opportunities.filter((o) => !o.sample);
+  const samples = opportunities.filter((o) => o.sample);
 
   return (
     <div className="p-5">
@@ -477,32 +495,106 @@ function OpportunitiesTab({
           </button>
         ))}
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <EngineChip label="Daytona" on={engines?.daytonaConfigured} />
+        <EngineChip label="Gemini" on={engines?.geminiConfigured} />
+        <EngineChip label="Grok" on={engines?.grokConfigured} />
+      </div>
+
       <button
         onClick={() => search.mutate(text.trim())}
         disabled={!text.trim() || search.isPending}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
       >
         {search.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            KeyP Planner 탐색 중…
+            Live Research 실행 중…
           </>
         ) : (
           <>
             <Sparkles className="h-4 w-4" />
-            기회 탐색 시작
+            Live Research
           </>
         )}
       </button>
+
+      {(search.isPending || meta) && (
+        <section className="mt-3 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              <Terminal className="h-3.5 w-3.5" />
+              Research progress
+            </div>
+            {meta && (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 font-mono text-[9px] font-bold text-emerald-400">
+                sandbox {meta.sandboxId.slice(0, 12)}
+              </span>
+            )}
+          </div>
+          <ol className="space-y-1.5">
+            {RESEARCH_STEPS.map((s, i) => {
+              const skipped =
+                (s.key === "gemini" && !engines?.geminiConfigured) ||
+                (s.key === "grok" && !engines?.grokConfigured);
+              return (
+                <li key={s.key} className="flex items-center gap-2 text-[11px]">
+                  <span
+                    className={`grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold ${
+                      meta ? (skipped ? "bg-slate-700 text-slate-400" : "bg-emerald-500 text-slate-950") : "bg-indigo-500/70 text-white"
+                    }`}
+                  >
+                    {meta ? (skipped ? "–" : "✓") : i + 1}
+                  </span>
+                  <span className={skipped ? "text-slate-500" : "text-slate-200"}>{s.ko}</span>
+                  <span className="font-mono text-[9px] text-slate-500">{s.en}</span>
+                  {skipped && <span className="text-[9px] text-amber-500">skipped · 연결 필요</span>}
+                </li>
+              );
+            })}
+          </ol>
+          {meta && (
+            <div className="mt-3 border-t border-slate-800 pt-2 font-mono text-[10px] leading-relaxed text-emerald-300">
+              engines: {meta.enginesUsed.length ? meta.enginesUsed.join(" + ") : "none"} · results: {meta.count}
+              {meta.errors.map((e) => (
+                <div key={e.engine} className="text-amber-400">
+                  {e.engine} error: {e.message.slice(0, 120)}
+                </div>
+              ))}
+              {meta.note && <div className="text-amber-400">{meta.note}</div>}
+            </div>
+          )}
+        </section>
+      )}
+
       {search.isError && (
-        <div className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-700">
-          {(search.error as Error).message}
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+          라이브 리서치를 실행하지 못했습니다 — 결과를 대신 만들어내지 않습니다.
+          <div className="mt-1 font-mono text-[10px]">{(search.error as Error).message}</div>
         </div>
       )}
 
-      <div className="mt-6 space-y-3">
-        <div className="text-xs font-semibold text-slate-500">기회 {opportunities.length}건</div>
-        {opportunities.map((o) => (
+      {live.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold">LIVE RESULTS</span>
+            {live.length}건
+          </div>
+          {live.map((o) => (
+            <OpportunityCard key={o.id} o={o} onRun={() => onSelect(o)} />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+            SAMPLE DATA
+          </span>
+          발표 백업용 예시 {samples.length}건 (실제 공고 아님)
+        </div>
+        {samples.map((o) => (
           <OpportunityCard key={o.id} o={o} onRun={() => onSelect(o)} />
         ))}
       </div>
@@ -510,29 +602,78 @@ function OpportunitiesTab({
   );
 }
 
+function EngineChip({ label, on }: { label: string; on?: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+        on ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-emerald-500" : "bg-amber-500"}`} />
+      {label}
+    </span>
+  );
+}
+
+function Badge({ children, tone }: { children: React.ReactNode; tone: "indigo" | "violet" | "slate" | "emerald" | "amber" | "dark" }) {
+  const map = {
+    indigo: "bg-indigo-50 text-indigo-700",
+    violet: "bg-violet-50 text-violet-700",
+    slate: "bg-slate-100 text-slate-500",
+    emerald: "bg-emerald-50 text-emerald-700",
+    amber: "bg-amber-50 text-amber-700",
+    dark: "bg-slate-900 text-white",
+  } as const;
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${map[tone]}`}>{children}</span>;
+}
+
 function OpportunityCard({ o, onRun }: { o: Opportunity; onRun: () => void }) {
+  const evidence = o.sourceEvidence ?? [];
+  const xEv = o.xEvidence ?? [];
   return (
     <article className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
-          {o.category}
-        </span>
-        {o.sample && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-            SAMPLE DATA
-          </span>
-        )}
+        <Badge tone="indigo">{o.category}</Badge>
+        {o.sample && <Badge tone="slate">SAMPLE DATA</Badge>}
+        {o.discoveredBy?.includes("gemini") && <Badge tone="violet">Gemini</Badge>}
+        {o.discoveredBy?.includes("grok") && <Badge tone="violet">Grok</Badge>}
+        {xEv.length > 0 && <Badge tone="dark">X</Badge>}
+        {o.sourceType === "official" && <Badge tone="emerald">Official</Badge>}
+        {!o.sample &&
+          (o.verified ? <Badge tone="emerald">Verified</Badge> : <Badge tone="amber">Needs verification</Badge>)}
         <span className="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
           Match {o.matchScore}%
         </span>
       </div>
       <h3 className="text-sm font-bold leading-snug text-slate-900">{o.title}</h3>
-      <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{o.why}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{o.summary || o.why}</p>
       <dl className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
         <Meta label="주최" value={o.organizer} />
         <Meta label="마감" value={o.deadline} />
         <Meta label="지역" value={o.location} />
+        {typeof o.confidence === "number" && <Meta label="신뢰도" value={`${o.confidence}%`} />}
       </dl>
+
+      {(evidence.length > 0 || xEv.length > 0) && (
+        <div className="mt-3 space-y-1 rounded-xl bg-slate-50 p-2.5">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            Sources · web {evidence.length} / X {xEv.length}
+          </div>
+          {[...evidence, ...xEv].slice(0, 4).map((e) => (
+            <a
+              key={e.url}
+              href={e.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block truncate font-mono text-[10px] text-indigo-600 hover:underline"
+            >
+              [{e.engine}
+              {e.statusCode ? ` ${e.statusCode}` : ""}] {e.url}
+            </a>
+          ))}
+        </div>
+      )}
+
       <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
         {o.url && (
           <a
@@ -541,7 +682,7 @@ function OpportunityCard({ o, onRun }: { o: Opportunity; onRun: () => void }) {
             rel="noreferrer"
             className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
           >
-            공식 출처
+            {o.sourceType === "official" && o.verified ? "공식 출처" : "출처 링크"}
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
@@ -556,6 +697,7 @@ function OpportunityCard({ o, onRun }: { o: Opportunity; onRun: () => void }) {
     </article>
   );
 }
+
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
