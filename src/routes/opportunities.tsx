@@ -56,24 +56,24 @@ export const Route = createFileRoute("/opportunities")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "KeyP × Daytona — Opportunity Agent" },
+      { title: "KeyP 기회 탐색 — Opportunity Agent" },
       {
         name: "description",
         content:
           "KeyP doesn't just find opportunities. It executes the work required to pursue them. 관심사에서 실행까지 — Daytona 샌드박스에서 지원 패키지를 자동 생성합니다.",
       },
-      { property: "og:title", content: "KeyP × Daytona — Opportunity Agent" },
+      { property: "og:title", content: "KeyP 기회 탐색 — Opportunity Agent" },
       {
         property: "og:description",
         content: "From Interest to Action. AI 에이전트가 기회를 찾고, Daytona 샌드박스에서 지원 서류까지 만듭니다.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://keyp.info/" },
+      { property: "og:url", content: "https://keyp.info/opportunities" },
       { property: "og:image", content: "https://keyp.info/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:image", content: "https://keyp.info/og-image.png" },
     ],
-    links: [{ rel: "canonical", href: "https://keyp.info/" }],
+    links: [{ rel: "canonical", href: "https://keyp.info/opportunities" }],
   }),
   component: KeypDaytonaApp,
 });

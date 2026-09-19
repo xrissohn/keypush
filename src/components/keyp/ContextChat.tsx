@@ -51,6 +51,14 @@ export function ContextChat() {
   }, [selectedId, watches.data]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const watchId = params.get("watch");
+    const findingId = params.get("finding");
+    if (watchId) setSelectedId(watchId);
+    if (findingId) window.setTimeout(() => document.getElementById(`finding-${findingId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 250);
+  }, []);
+
+  useEffect(() => {
     if (!notifications.data) return;
     if (!knownNotifications.current) {
       knownNotifications.current = new Set(notifications.data.map((item) => item.id));

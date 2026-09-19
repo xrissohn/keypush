@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWatchesRouteImport } from './routes/api/watches'
@@ -26,6 +27,11 @@ import { Route as ApiPublicKeypSearchRouteImport } from './routes/api/public/key
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpportunitiesRoute = OpportunitiesRouteImport.update({
+  id: '/opportunities',
+  path: '/opportunities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRoute = DocsRouteImport.update({
@@ -94,6 +100,7 @@ const ApiPublicKeypSearchRoute = ApiPublicKeypSearchRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
@@ -109,6 +116,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/watches': typeof ApiWatchesRouteWithChildren
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/docs'
+    | '/opportunities'
     | '/sitemap.xml'
     | '/api/notifications'
     | '/api/watches'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/docs'
+    | '/opportunities'
     | '/sitemap.xml'
     | '/api/notifications'
     | '/api/watches'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/docs'
+    | '/opportunities'
     | '/sitemap.xml'
     | '/api/notifications'
     | '/api/watches'
@@ -188,6 +200,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
+  OpportunitiesRoute: typeof OpportunitiesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiNotificationsRoute: typeof ApiNotificationsRoute
   ApiWatchesRoute: typeof ApiWatchesRouteWithChildren
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/opportunities': {
+      id: '/opportunities'
+      path: '/opportunities'
+      fullPath: '/opportunities'
+      preLoaderRoute: typeof OpportunitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -322,6 +342,7 @@ const ApiWatchesRouteWithChildren = ApiWatchesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
+  OpportunitiesRoute: OpportunitiesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiNotificationsRoute: ApiNotificationsRoute,
   ApiWatchesRoute: ApiWatchesRouteWithChildren,

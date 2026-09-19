@@ -395,6 +395,10 @@ export async function deleteWatch(watchId: string) {
 
 export async function listNotifications(): Promise<WatchNotification[]> {
   const sb = await db();
+  await sb
+    .from("notification_queue")
+    .update({ status: "sent", sent_at: new Date().toISOString() })
+    .eq("status", "queued");
   const { data, error } = await sb.from("notification_queue").select("*").order("created_at", { ascending: false }).limit(50);
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => {
