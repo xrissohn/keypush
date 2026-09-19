@@ -86,7 +86,14 @@ export interface RunResultOk {
   reasons: string[];
   missingDocuments: string[];
   files: GeneratedFile[];
+  /** research engines whose evidence was actually used for this run */
+  enginesUsed?: ResearchEngine[];
+  evidenceCount?: number;
+  xSourceCount?: number;
+  /** "gemini" when Gemini reasoned over the evidence, "deterministic" for rule-based fallback */
+  eligibilityEngine?: "gemini" | "deterministic";
 }
+
 
 export interface RunResultError {
   ok: false;
