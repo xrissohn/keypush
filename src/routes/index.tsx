@@ -49,6 +49,7 @@ import {
   saveRun,
 } from "@/lib/daytona/storage";
 import { ContextWatchTab } from "@/components/keyp/ContextWatchTab";
+import keypLogo from "@/assets/keyp-logo.svg";
 
 
 export const Route = createFileRoute("/")({
