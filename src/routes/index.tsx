@@ -49,6 +49,7 @@ import {
   saveRun,
 } from "@/lib/daytona/storage";
 import { ContextWatchTab } from "@/components/keyp/ContextWatchTab";
+import keypLogo from "@/assets/keyp-logo.svg";
 
 
 export const Route = createFileRoute("/")({
@@ -67,8 +68,12 @@ export const Route = createFileRoute("/")({
         content: "From Interest to Action. AI 에이전트가 기회를 찾고, Daytona 샌드박스에서 지원 서류까지 만듭니다.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://keyp.info/" },
+      { property: "og:image", content: "https://keyp.info/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://keyp.info/og-image.png" },
     ],
+    links: [{ rel: "canonical", href: "https://keyp.info/" }],
   }),
   component: KeypDaytonaApp,
 });
@@ -191,9 +196,11 @@ function TopBar({ tab, configured }: { tab: Tab; configured: boolean }) {
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/90 px-5 py-4 backdrop-blur">
       <div className="flex items-center gap-2.5">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-black text-white shadow-lg shadow-indigo-600/25">
-          K
-        </div>
+        <img
+          src={keypLogo}
+          alt="KeyP"
+          className="h-9 w-9 rounded-xl shadow-lg shadow-indigo-600/25"
+        />
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-600">
             KeyP × Daytona
