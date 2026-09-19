@@ -1,13 +1,13 @@
 // Server-only minimal Daytona Cloud API client (fetch based, edge-runtime safe).
-// The official @daytonaio/sdk depends on Node-only modules (opentelemetry sdk-node,
-// tar, fast-glob, ws) that cannot be bundled for this project's Worker runtime,
-// so we talk to the same public Daytona API directly.
+// The official TypeScript SDK (@daytona/sdk) depends on Node-only modules
+// (opentelemetry sdk-node, tar, fast-glob, ws) that cannot be bundled for this
+// project's Worker runtime, so we talk to the same public Daytona API directly.
 //
-// API surface used (Daytona API v0.214 shape):
-//   POST   {apiUrl}/sandbox                     -> create sandbox
-//   GET    {apiUrl}/sandbox/{id}                -> poll state, read toolboxProxyUrl
-//   DELETE {apiUrl}/sandbox/{id}                -> destroy sandbox
-//   POST   {toolboxProxyUrl}/{id}/process/execute -> run a shell command inside it
+// API surface used (current Daytona Cloud API shape):
+//   POST   {apiUrl}/sandbox                         -> create sandbox
+//   GET    {apiUrl}/sandbox/{id}                    -> poll state, read toolboxProxyUrl
+//   DELETE {apiUrl}/sandbox/{id}                    -> destroy sandbox
+//   POST   https://proxy.app.daytona.io/toolbox/{id}/process/execute -> run a shell command inside it
 
 const DEFAULT_API_URL = "https://app.daytona.io/api";
 
@@ -64,8 +64,12 @@ async function req<T>(
   }
 }
 
+const DEFAULT_TOOLBOX_PROXY = "https://proxy.app.daytona.io/toolbox";
+
 function toolboxBaseOf(dto: SandboxDto): string {
-  const proxy = (dto.toolboxProxyUrl || "https://proxy.app.daytona.io/toolbox").replace(/\/$/, "");
+  const proxy = (dto.toolboxProxyUrl || DEFAULT_TOOLBOX_PROXY).replace(/\/$/, "");
+  // If the proxy URL already ends with the sandbox id, do not append it again.
+  if (proxy.endsWith(`/${dto.id}`)) return proxy;
   return `${proxy}/${dto.id}`;
 }
 
@@ -75,6 +79,7 @@ export async function createSandbox(opts: { snapshot?: string; labels?: Record<s
   if (!apiKey) throw new DaytonaError("DAYTONA_API_KEY is not configured");
 
   const body: Record<string, unknown> = {
+    language: "python", // guarantee agent.py has its expected runtime
     labels: { app: "keyp", purpose: "opportunity-agent", ...(opts.labels ?? {}) },
     autoStopInterval: 15,
     autoDeleteInterval: 30,
