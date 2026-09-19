@@ -90,7 +90,7 @@ export async function runResearchInSandbox(input: {
       })`,
     );
     const run = await exec(sandbox, `cd ${RESEARCH_DIR} && ${envPrefix} python3 research_agent.py`, {
-      timeout: 240,
+      timeout: 700, // grok (240s + one retry) + gemini + direct URL fetches
     });
     if (run.exitCode !== 0) {
       throw new Error(`research agent exited with code ${run.exitCode}: ${run.result.slice(-500)}`);
