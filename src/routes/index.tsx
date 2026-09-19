@@ -288,7 +288,7 @@ function DashboardTab({
         <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
           KeyP × Daytona
         </div>
-        <h1 className="mt-2 text-2xl font-bold leading-snug">From Interest to Action.</h1>
+        <h2 className="mt-2 text-2xl font-bold leading-snug">From Interest to Action.</h2>
         <p className="mt-2 text-sm leading-relaxed text-white/85">
           KeyP는 기회를 찾는 데서 멈추지 않습니다. 그 기회를 잡기 위해 필요한 일까지 직접 실행합니다.
         </p>
