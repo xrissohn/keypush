@@ -17,9 +17,11 @@ import {
   type RunResult,
   type RunStep,
 } from "./types";
+import type { ResearchEngine } from "@/lib/research/types";
 
 const WORKDIR = "/home/daytona/keyp";
 const OUTDIR = `${WORKDIR}/output`;
+const RESDIR = `${WORKDIR}/research`;
 
 function freshSteps(): RunStep[] {
   return RUN_STEP_LABELS.map((s) => ({ key: s.key, label: s.label, status: "pending" as const }));
@@ -34,20 +36,39 @@ function mark(steps: RunStep[], key: string, status: RunStep["status"], detail?:
   }
 }
 
+function sq(v: string) {
+  return `'${v.replace(/'/g, `'\\''`)}'`;
+}
+
 /** The analysis program that actually runs inside the isolated sandbox. */
 const AGENT_PY = String.raw`
-import json, os, csv, datetime, re
+import json, os, csv, datetime, re, urllib.request
 
 base = os.path.dirname(os.path.abspath(__file__))
 out = os.path.join(base, "output")
+resdir = os.path.join(base, "research")
 os.makedirs(out, exist_ok=True)
+os.makedirs(resdir, exist_ok=True)
 
 opp = json.load(open(os.path.join(base, "opportunity.json"), encoding="utf-8"))
 profile = json.load(open(os.path.join(base, "company-profile.json"), encoding="utf-8"))
 
-text = " ".join([str(opp.get(k, "")) for k in ("title", "category", "organizer", "location", "why")]).lower()
+research_path = os.path.join(resdir, "research-results.json")
+research = json.load(open(research_path, encoding="utf-8")) if os.path.exists(research_path) else {}
+evidence = opp.get("sourceEvidence") or []
+x_evidence = opp.get("xEvidence") or []
+engines = research.get("enginesUsed") or opp.get("discoveredBy") or []
+query = research.get("query", "")
 
-# 1) parse requirements out of the opportunity description
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+text = " ".join([str(opp.get(k, "")) for k in ("title", "category", "organizer", "location", "why", "summary")])
+for e in evidence:
+    text += " " + str(e.get("snippet", ""))
+text = text.lower()
+
+# 1) parse requirements out of the opportunity description + verified evidence
 REQ_RULES = [
     ("location_seoul", "서울 소재 기업", ["seoul", "서울"]),
     ("startup", "스타트업 / 중소기업", ["startup", "sme", "스타트업", "중소기업"]),
@@ -61,7 +82,6 @@ for key, label, kws in REQ_RULES:
 if not requirements:
     requirements.append({"key": "general", "label": "일반 지원 요건"})
 
-# 2) compare against the company profile
 ptext = " ".join([str(profile.get(k, "")) for k in ("company", "location", "industry", "companyType")] + list(profile.get("interests", []))).lower()
 
 CHECKS = {
@@ -82,6 +102,52 @@ for r in requirements:
 score = int(round(100.0 * met / max(1, len(requirements))))
 score = max(35, min(98, score - (0 if met == len(requirements) else 8)))
 eligible = "yes" if met == len(requirements) else ("review" if met >= max(1, len(requirements) - 1) else "no")
+engine_used = "deterministic"
+notes = []
+
+# 2) evidence-driven reasoning with Gemini when a direct API key is available
+def gemini_eligibility():
+    payload_evidence = [{"url": e.get("url"), "title": e.get("title"), "statusCode": e.get("statusCode"),
+                         "snippet": (e.get("snippet") or "")[:700]} for e in evidence[:6]]
+    payload_x = [{"url": e.get("url"), "title": e.get("title")} for e in x_evidence[:6]]
+    prompt = (
+        "Assess eligibility of this company for this opportunity using ONLY the evidence given. "
+        "Official/organizer evidence outranks social (X) posts; X posts must not override official "
+        "eligibility or deadline facts. Never invent a deadline.\n\n"
+        "Opportunity: %s\nCompany profile: %s\nOfficial/web evidence: %s\nX evidence: %s\n\n"
+        'Return ONLY JSON: {"matchScore":0-100,"eligible":"yes|review|no",'
+        '"requirements":[{"requirement":"...","met":true}],"missingDocuments":["..."],"notes":["..."]}'
+        % (json.dumps(opp, ensure_ascii=False)[:2500], json.dumps(profile, ensure_ascii=False),
+           json.dumps(payload_evidence, ensure_ascii=False)[:6000], json.dumps(payload_x, ensure_ascii=False)[:1500])
+    )
+    body = json.dumps({"contents": [{"role": "user", "parts": [{"text": prompt}]}]}).encode("utf-8")
+    req = urllib.request.Request(
+        "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % GEMINI_MODEL,
+        data=body, method="POST",
+        headers={"Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        data = json.loads(r.read().decode("utf-8", "replace"))
+    txt = ""
+    for p in ((data.get("candidates") or [{}])[0].get("content", {}) or {}).get("parts", []) or []:
+        txt += p.get("text") or ""
+    m = re.search(r"\{[\s\S]*\}", txt)
+    return json.loads(m.group(0)) if m else None
+
+if GEMINI_KEY and (evidence or x_evidence):
+    try:
+        g = gemini_eligibility()
+        if g:
+            score = int(max(0, min(100, g.get("matchScore", score))))
+            if g.get("eligible") in ("yes", "review", "no"):
+                eligible = g["eligible"]
+            if isinstance(g.get("requirements"), list) and g["requirements"]:
+                results = [{"requirement": str(x.get("requirement", ""))[:200], "met": bool(x.get("met"))}
+                           for x in g["requirements"] if isinstance(x, dict)]
+            notes = [str(n)[:300] for n in (g.get("notes") or [])][:6]
+            engine_used = "gemini"
+            gemini_missing = [str(d)[:120] for d in (g.get("missingDocuments") or [])]
+    except Exception as e:
+        notes.append("Gemini eligibility reasoning failed, deterministic fallback used: %s" % str(e)[:160])
 
 DOCS = [
     ("사업자등록증", "business_registration"),
@@ -91,6 +157,12 @@ DOCS = [
     ("팀 구성원 이력 요약", "team_profile"),
 ]
 missing = [d[0] for d in DOCS if d[1] not in (profile.get("documents") or [])]
+if engine_used == "gemini":
+    try:
+        extra = [m for m in gemini_missing if m not in missing]
+        missing = missing + extra
+    except Exception:
+        pass
 
 now = datetime.datetime.utcnow().isoformat() + "Z"
 
@@ -99,8 +171,10 @@ report.append("# Eligibility Report")
 report.append("")
 report.append("- Opportunity: **%s**" % opp.get("title"))
 report.append("- Organizer: %s" % opp.get("organizer"))
-report.append("- Deadline: %s" % opp.get("deadline"))
+report.append("- Deadline: %s" % (opp.get("deadline") or "공식 공고 확인 필요"))
 report.append("- Company: **%s** (%s, %s)" % (profile.get("company"), profile.get("location"), profile.get("companyType")))
+report.append("- Analysis engine: **%s**%s" % (engine_used, " (rule-based fallback)" if engine_used == "deterministic" else " (reasoned over collected evidence)"))
+report.append("- Evidence sources: %d web/official, %d X" % (len(evidence), len(x_evidence)))
 report.append("- Generated in Daytona sandbox at %s" % now)
 report.append("")
 report.append("## Requirement check")
@@ -114,6 +188,8 @@ report.append("## Verdict")
 report.append("")
 report.append("- Match score: **%d%%**" % score)
 report.append("- Eligible: **%s**" % eligible.upper())
+for n in notes:
+    report.append("- Note: %s" % n)
 report.append("")
 report.append("## Missing documents")
 report.append("")
@@ -149,11 +225,55 @@ with open(os.path.join(out, "submission-checklist.csv"), "w", encoding="utf-8", 
     for m in missing:
         w.writerow([m, "document", "missing", opp.get("deadline")])
 
+dossier = []
+dossier.append("# Research Dossier")
+dossier.append("")
+dossier.append("- Query: %s" % (query or "(직접 선택된 기회 — 신규 검색 없음)"))
+dossier.append("- Research engines used: %s" % (", ".join(engines) if engines else "none (no live search engine configured)"))
+dossier.append("- Opportunity: %s" % opp.get("title"))
+dossier.append("- Verification status: %s" % ("verified — accessible source confirmed" if opp.get("verified") else "needs verification"))
+dossier.append("- Source type: %s" % (opp.get("sourceType") or "unknown"))
+dossier.append("")
+dossier.append("## Official / web sources")
+dossier.append("")
+if evidence:
+    for e in evidence:
+        dossier.append("- [%s](%s) — engine: %s · HTTP %s" % (e.get("title") or e.get("url"), e.get("url"), e.get("engine"), e.get("statusCode")))
+        snip = (e.get("snippet") or "").replace("\n", " ")[:300]
+        if snip:
+            dossier.append("  - note: %s" % snip)
+else:
+    dossier.append("- (none collected)")
+dossier.append("")
+dossier.append("## X / social evidence (supporting only)")
+dossier.append("")
+if x_evidence:
+    for e in x_evidence:
+        dossier.append("- [%s](%s) — engine: %s" % (e.get("title") or e.get("url"), e.get("url"), e.get("engine")))
+else:
+    dossier.append("- (none collected)")
+dossier.append("")
+dossier.append("## Notes")
+dossier.append("")
+dossier.append("- Official organizer/government sources outrank social posts for eligibility and deadline facts.")
+dossier.append("- Deadlines are never inferred; missing deadlines are reported as \"공식 공고 확인 필요\".")
+for n in notes:
+    dossier.append("- %s" % n)
+open(os.path.join(out, "research-dossier.md"), "w", encoding="utf-8").write("\n".join(dossier))
+
+json.dump({"opportunity": opp.get("id"), "sourceEvidence": evidence, "xEvidence": x_evidence},
+          open(os.path.join(resdir, "source-evidence.json"), "w", encoding="utf-8"),
+          ensure_ascii=False, indent=2)
+
 print("KEYP_RESULT_JSON:" + json.dumps({
     "matchScore": score,
     "eligible": eligible,
     "requirements": results,
     "missingDocuments": missing,
+    "eligibilityEngine": engine_used,
+    "evidenceCount": len(evidence),
+    "xSourceCount": len(x_evidence),
+    "engines": engines,
     "generatedAt": now,
 }, ensure_ascii=False))
 `;
@@ -161,12 +281,14 @@ print("KEYP_RESULT_JSON:" + json.dumps({
 export async function runOpportunityInSandbox(
   opportunity: Opportunity,
   companyProfile: CompanyProfile = SAMPLE_COMPANY_PROFILE,
+  research?: { query?: string; enginesUsed?: ResearchEngine[] },
 ): Promise<RunResult> {
   if (!isDaytonaConfigured()) {
     return {
       ok: false,
       code: "not_configured",
-      error: "DAYTONA_API_KEY is not configured on the server. Add it in Project Settings → Secrets to enable REAL runs.",
+      error:
+        "DAYTONA_API_KEY is not configured on the server. Add it in Project Settings → Secrets to enable REAL runs.",
     };
   }
 
@@ -186,18 +308,45 @@ export async function runOpportunityInSandbox(
     push(`daytona: sandbox ready id=${sandbox.id}`);
 
     mark(steps, "source", "running");
-    await exec(sandbox, `mkdir -p ${OUTDIR}`);
+    await exec(sandbox, `mkdir -p ${OUTDIR} ${RESDIR}`);
     await writeFile(sandbox, `${WORKDIR}/opportunity.json`, JSON.stringify(opportunity, null, 2));
     await writeFile(sandbox, `${WORKDIR}/company-profile.json`, JSON.stringify(companyProfile, null, 2));
+    await writeFile(
+      sandbox,
+      `${RESDIR}/research-results.json`,
+      JSON.stringify(
+        {
+          query: research?.query ?? "",
+          enginesUsed: research?.enginesUsed ?? opportunity.discoveredBy ?? [],
+          results: [opportunity],
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      sandbox,
+      `${RESDIR}/source-evidence.json`,
+      JSON.stringify(
+        { sourceEvidence: opportunity.sourceEvidence ?? [], xEvidence: opportunity.xEvidence ?? [] },
+        null,
+        2,
+      ),
+    );
     await writeFile(sandbox, `${WORKDIR}/agent.py`, AGENT_PY);
-    push(`fs: wrote opportunity.json, company-profile.json, agent.py into ${WORKDIR}`);
-    mark(steps, "source", "done", "opportunity.json written");
+    push(`fs: wrote opportunity.json, company-profile.json, research/*.json, agent.py into ${WORKDIR}`);
+    mark(steps, "source", "done", "opportunity + evidence written");
 
     mark(steps, "requirements", "running");
     mark(steps, "profile", "running");
     mark(steps, "eligibility", "running");
-    push("exec: python3 agent.py");
-    const run = await exec(sandbox, `cd ${WORKDIR} && python3 agent.py`, { timeout: 90 });
+    const geminiKey = process.env["GEMINI_API_KEY"] || "";
+    const geminiModel = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
+    const envPrefix = geminiKey
+      ? `GEMINI_API_KEY=${sq(geminiKey)} GEMINI_MODEL=${sq(geminiModel)}`
+      : "";
+    push(`exec: python3 agent.py${geminiKey ? " (Gemini evidence reasoning enabled)" : " (deterministic scoring)"}`);
+    const run = await exec(sandbox, `cd ${WORKDIR} && ${envPrefix} python3 agent.py`, { timeout: 150 });
     push(run.result.trim().split("\n").slice(-6).join("\n") || "(no stdout)");
     if (run.exitCode !== 0) {
       mark(steps, "requirements", "failed");
@@ -213,13 +362,27 @@ export async function runOpportunityInSandbox(
       eligible: "yes" | "review" | "no";
       requirements: Array<{ requirement: string; met: boolean }>;
       missingDocuments: string[];
+      eligibilityEngine: "gemini" | "deterministic";
+      evidenceCount: number;
+      xSourceCount: number;
+      engines: ResearchEngine[];
     };
     mark(steps, "requirements", "done", `${parsed.requirements.length} requirements extracted`);
     mark(steps, "profile", "done", `${companyProfile.company} profile analyzed`);
-    mark(steps, "eligibility", "done", `eligible=${parsed.eligible} score=${parsed.matchScore}%`);
+    mark(
+      steps,
+      "eligibility",
+      "done",
+      `eligible=${parsed.eligible} score=${parsed.matchScore}% via ${parsed.eligibilityEngine}`,
+    );
 
     mark(steps, "package", "running");
-    const names = ["eligibility-report.md", "application-draft.md", "submission-checklist.csv"];
+    const names = [
+      "eligibility-report.md",
+      "application-draft.md",
+      "submission-checklist.csv",
+      "research-dossier.md",
+    ];
     const files: GeneratedFile[] = [];
     for (const name of names) {
       const content = await readFile(sandbox, `${OUTDIR}/${name}`);
@@ -245,6 +408,10 @@ export async function runOpportunityInSandbox(
       reasons: parsed.requirements.map((r) => `${r.met ? "PASS" : "REVIEW"} · ${r.requirement}`),
       missingDocuments: parsed.missingDocuments,
       files,
+      enginesUsed: parsed.engines ?? [],
+      evidenceCount: parsed.evidenceCount ?? 0,
+      xSourceCount: parsed.xSourceCount ?? 0,
+      eligibilityEngine: parsed.eligibilityEngine,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -273,7 +440,7 @@ export function simulateOpportunityRun(
     {
       name: "eligibility-report.md",
       path: "/output/eligibility-report.md",
-      content: `# Eligibility Report (DEMO — simulated, no sandbox executed)\n\n- Opportunity: **${opportunity.title}**\n- Company: **${companyProfile.company}** (${companyProfile.location}, ${companyProfile.companyType})\n\n| Requirement | Status |\n| --- | --- |\n| 서울 소재 기업 | PASS |\n| 스타트업 / 중소기업 | PASS |\n| AI 관련 사업 영역 | PASS |\n\n## Verdict\n\n- Match score: **${score}%**\n- Eligible: **REVIEW**\n`,
+      content: `# Eligibility Report (DEMO — simulated, no sandbox executed)\n\n- Opportunity: **${opportunity.title}**\n- Company: **${companyProfile.company}** (${companyProfile.location}, ${companyProfile.companyType})\n- Analysis engine: deterministic (simulated)\n\n| Requirement | Status |\n| --- | --- |\n| 서울 소재 기업 | PASS |\n| 스타트업 / 중소기업 | PASS |\n| AI 관련 사업 영역 | PASS |\n\n## Verdict\n\n- Match score: **${score}%**\n- Eligible: **REVIEW**\n`,
     },
     {
       name: "application-draft.md",
@@ -284,6 +451,11 @@ export function simulateOpportunityRun(
       name: "submission-checklist.csv",
       path: "/output/submission-checklist.csv",
       content: `item,type,status,due\n서울 소재 기업,requirement,met,${opportunity.deadline}\n사업자등록증,document,missing,${opportunity.deadline}\n사업계획서 (PDF),document,missing,${opportunity.deadline}\n`,
+    },
+    {
+      name: "research-dossier.md",
+      path: "/output/research-dossier.md",
+      content: `# Research Dossier (DEMO — simulated, no live search performed)\n\n- Query: (demo)\n- Research engines used: none — this is a simulated run\n- Opportunity: ${opportunity.title}\n- Verification status: needs verification\n\n## Official / web sources\n\n- (none collected — DEMO run does not fetch sources)\n\n## X / social evidence\n\n- (none collected)\n`,
     },
   ];
   return {
@@ -302,12 +474,16 @@ export function simulateOpportunityRun(
       "[demo] requirements extracted: 3",
       `[demo] company profile analyzed: ${companyProfile.company}`,
       `[demo] eligibility: review (score ${score}%)`,
-      "[demo] generated /output/eligibility-report.md, /output/application-draft.md, /output/submission-checklist.csv",
+      "[demo] generated /output/eligibility-report.md, application-draft.md, submission-checklist.csv, research-dossier.md",
     ],
     matchScore: score,
     eligible: "review",
     reasons: ["PASS · 서울 소재 기업", "PASS · 스타트업 / 중소기업", "PASS · AI 관련 사업 영역"],
     missingDocuments: ["사업자등록증", "최근 회계연도 재무제표", "사업계획서 (PDF)"],
     files,
+    enginesUsed: [],
+    evidenceCount: 0,
+    xSourceCount: 0,
+    eligibilityEngine: "deterministic",
   };
 }
