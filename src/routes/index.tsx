@@ -558,6 +558,7 @@ function OpportunitiesTab({
                   </span>
                   <span className={skipped ? "text-slate-500" : "text-slate-200"}>{s.ko}</span>
                   <span className="font-mono text-[9px] text-slate-500">{s.en}</span>
+                  {lovableFallback && <span className="text-[9px] text-indigo-400">Lovable AI 폴백 · 모델 지식</span>}
                   {skipped && <span className="text-[9px] text-amber-500">skipped · 연결 필요</span>}
                 </li>
               );
